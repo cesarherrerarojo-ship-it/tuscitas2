@@ -122,20 +122,109 @@
   <div class="container mx-auto px-4 py-8 max-w-4xl">
 
     <!-- Profile Photo Section -->
-    <div class="glass-strong rounded-2xl p-8 mb-6 text-center">
-      <div class="flex flex-col items-center">
-        <div class="mb-4 relative">
-          <img id="profilePhoto" class="profile-photo hidden" src="" alt="Foto de perfil">
-          <div id="photoPlaceholder" class="photo-placeholder">
-            <span id="photoInitial">U</span>
+    <div class="glass-strong rounded-2xl p-8 mb-6">
+      <h3 class="text-2xl font-bold mb-6 flex items-center gap-3 text-center justify-center">
+        <i class="fas fa-images text-purple-400"></i>
+        Fotos de Perfil
+      </h3>
+
+      <!-- Avatar Principal -->
+      <div class="text-center mb-6">
+        <label class="text-white font-semibold mb-2 block">Avatar Principal (Obligatorio)</label>
+        <div class="flex flex-col items-center">
+          <div class="mb-4 relative">
+            <img id="profilePhoto" class="profile-photo hidden" src="" alt="Foto de perfil">
+            <div id="photoPlaceholder" class="photo-placeholder">
+              <span id="photoInitial">U</span>
+            </div>
+            <button type="button" onclick="document.getElementById('photoInput').click()" class="absolute bottom-0 right-0 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 w-12 h-12 rounded-full flex items-center justify-center transition shadow-lg">
+              <i class="fas fa-camera text-xl"></i>
+            </button>
+            <input type="file" id="photoInput" accept="image/*" class="hidden">
           </div>
-          <button onclick="document.getElementById('photoInput').click()" class="absolute bottom-0 right-0 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 w-12 h-12 rounded-full flex items-center justify-center transition shadow-lg">
-            <i class="fas fa-camera text-xl"></i>
-          </button>
-          <input type="file" id="photoInput" accept="image/*" class="hidden">
+          <h2 id="userName" class="text-2xl font-bold mb-2">Usuario</h2>
+          <p class="text-slate-300" id="userEmail">email@example.com</p>
         </div>
-        <h2 id="userName" class="text-2xl font-bold mb-2">Usuario</h2>
-        <p class="text-slate-300" id="userEmail">email@example.com</p>
+      </div>
+
+      <!-- Galería de Fotos Adicionales -->
+      <div class="mt-8">
+        <label class="text-white font-semibold mb-2 block text-center">
+          Galería de Fotos (Mínimo 2 obligatorias, máximo 5)
+        </label>
+        <p class="text-sm text-slate-300 text-center mb-4">
+          <i class="fas fa-info-circle mr-1"></i>
+          Sube al menos 2 fotos adicionales para completar tu perfil
+        </p>
+
+        <div class="grid grid-cols-3 md:grid-cols-5 gap-4">
+          <!-- Gallery Photo 1 -->
+          <div class="relative aspect-square">
+            <div id="galleryPreview1" class="w-full h-full rounded-xl border-2 border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:border-white/60 transition bg-white/5">
+              <i class="fas fa-plus text-white/50 text-2xl"></i>
+            </div>
+            <img id="galleryImage1" class="hidden w-full h-full rounded-xl object-cover" src="" alt="Foto 1">
+            <button type="button" id="galleryRemove1" class="hidden absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 w-8 h-8 rounded-full flex items-center justify-center transition shadow-lg">
+              <i class="fas fa-times text-white"></i>
+            </button>
+            <input type="file" id="galleryInput1" accept="image/*" class="hidden">
+          </div>
+
+          <!-- Gallery Photo 2 -->
+          <div class="relative aspect-square">
+            <div id="galleryPreview2" class="w-full h-full rounded-xl border-2 border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:border-white/60 transition bg-white/5">
+              <i class="fas fa-plus text-white/50 text-2xl"></i>
+            </div>
+            <img id="galleryImage2" class="hidden w-full h-full rounded-xl object-cover" src="" alt="Foto 2">
+            <button type="button" id="galleryRemove2" class="hidden absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 w-8 h-8 rounded-full flex items-center justify-center transition shadow-lg">
+              <i class="fas fa-times text-white"></i>
+            </button>
+            <input type="file" id="galleryInput2" accept="image/*" class="hidden">
+          </div>
+
+          <!-- Gallery Photo 3 -->
+          <div class="relative aspect-square">
+            <div id="galleryPreview3" class="w-full h-full rounded-xl border-2 border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:border-white/60 transition bg-white/5">
+              <i class="fas fa-plus text-white/50 text-2xl"></i>
+            </div>
+            <img id="galleryImage3" class="hidden w-full h-full rounded-xl object-cover" src="" alt="Foto 3">
+            <button type="button" id="galleryRemove3" class="hidden absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 w-8 h-8 rounded-full flex items-center justify-center transition shadow-lg">
+              <i class="fas fa-times text-white"></i>
+            </button>
+            <input type="file" id="galleryInput3" accept="image/*" class="hidden">
+          </div>
+
+          <!-- Gallery Photo 4 -->
+          <div class="relative aspect-square">
+            <div id="galleryPreview4" class="w-full h-full rounded-xl border-2 border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:border-white/60 transition bg-white/5">
+              <i class="fas fa-plus text-white/50 text-2xl"></i>
+            </div>
+            <img id="galleryImage4" class="hidden w-full h-full rounded-xl object-cover" src="" alt="Foto 4">
+            <button type="button" id="galleryRemove4" class="hidden absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 w-8 h-8 rounded-full flex items-center justify-center transition shadow-lg">
+              <i class="fas fa-times text-white"></i>
+            </button>
+            <input type="file" id="galleryInput4" accept="image/*" class="hidden">
+          </div>
+
+          <!-- Gallery Photo 5 -->
+          <div class="relative aspect-square">
+            <div id="galleryPreview5" class="w-full h-full rounded-xl border-2 border-dashed border-white/30 flex items-center justify-center cursor-pointer hover:border-white/60 transition bg-white/5">
+              <i class="fas fa-plus text-white/50 text-2xl"></i>
+            </div>
+            <img id="galleryImage5" class="hidden w-full h-full rounded-xl object-cover" src="" alt="Foto 5">
+            <button type="button" id="galleryRemove5" class="hidden absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 w-8 h-8 rounded-full flex items-center justify-center transition shadow-lg">
+              <i class="fas fa-times text-white"></i>
+            </button>
+            <input type="file" id="galleryInput5" accept="image/*" class="hidden">
+          </div>
+        </div>
+
+        <div class="mt-4 bg-yellow-500/20 border border-yellow-300/30 rounded-lg p-3">
+          <p class="text-white text-sm text-center">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            <strong>Obligatorio:</strong> Debes subir al menos 2 fotos adicionales además del avatar
+          </p>
+        </div>
       </div>
     </div>
 
@@ -196,36 +285,56 @@
           </select>
         </div>
 
-        <!-- Ciudad -->
+        <!-- Municipio -->
         <div>
           <label class="label">
             <i class="fas fa-map-marker-alt text-purple-400 mr-2"></i>
-            Ciudad
+            Municipio
           </label>
           <input
             type="text"
             id="city"
             class="w-full px-4 py-3 rounded-xl"
-            placeholder="Tu ciudad"
+            placeholder="Tu municipio"
+            required
+          >
+          <p class="text-xs text-slate-400 mt-2">
+            <i class="fas fa-info-circle mr-1"></i>
+            Solo indica el municipio, no tu dirección completa por seguridad
+          </p>
+        </div>
+
+        <!-- Profesión -->
+        <div>
+          <label class="label">
+            <i class="fas fa-briefcase text-purple-400 mr-2"></i>
+            ¿A Qué Te Dedicas?
+          </label>
+          <input
+            type="text"
+            id="profession"
+            class="w-full px-4 py-3 rounded-xl"
+            placeholder="Tu profesión u ocupación"
             required
           >
         </div>
 
-        <!-- Biografía -->
+        <!-- Autodescripción -->
         <div>
           <label class="label">
             <i class="fas fa-pen text-purple-400 mr-2"></i>
-            Sobre Mí
+            Autodescripción
           </label>
           <textarea
             id="bio"
-            rows="4"
+            rows="6"
             class="w-full px-4 py-3 rounded-xl resize-none"
-            placeholder="Cuéntanos algo sobre ti..."
-            maxlength="500"
+            placeholder="Escribe una descripción sobre ti, tus intereses, qué te gusta hacer, qué buscas... (Mínimo 120 palabras)"
           ></textarea>
           <p class="text-xs text-slate-400 mt-2">
-            <span id="bioCount">0</span>/500 caracteres
+            <span id="bioCount">0</span> palabras (<span id="bioCharCount">0</span> caracteres)
+            <span id="bioMinWarning" class="text-yellow-400 hidden"> - <i class="fas fa-exclamation-triangle"></i> Mínimo 120 palabras</span>
+            <span id="bioMinSuccess" class="text-green-400 hidden"> - <i class="fas fa-check-circle"></i> Descripción completa</span>
           </p>
         </div>
 
@@ -382,6 +491,7 @@
     let currentUser = null;
     let currentUserData = null;
     let photoFile = null;
+    let galleryFiles = [null, null, null, null, null]; // 5 gallery photos
     let selectedTheme = 'purple';
 
     // Auth State
@@ -422,7 +532,26 @@
           document.getElementById('birthDate').value = currentUserData.birthDate || '';
           document.getElementById('gender').value = currentUserData.gender || '';
           document.getElementById('city').value = currentUserData.city || '';
+          document.getElementById('profession').value = currentUserData.profession || '';
           document.getElementById('bio').value = currentUserData.bio || '';
+
+          // Load gallery photos
+          if (currentUserData.galleryPhotos && Array.isArray(currentUserData.galleryPhotos)) {
+            currentUserData.galleryPhotos.forEach((url, index) => {
+              if (url && index < 5) {
+                const imageEl = document.getElementById(`galleryImage${index + 1}`);
+                const previewEl = document.getElementById(`galleryPreview${index + 1}`);
+                const removeBtn = document.getElementById(`galleryRemove${index + 1}`);
+
+                if (imageEl && previewEl && removeBtn) {
+                  imageEl.src = url;
+                  imageEl.classList.remove('hidden');
+                  previewEl.classList.add('hidden');
+                  removeBtn.classList.remove('hidden');
+                }
+              }
+            });
+          }
 
           // Relationship status & preferences
           document.getElementById('relationshipStatus').value = currentUserData.relationshipStatus || '';
@@ -482,12 +611,31 @@
       showToast('Tema aplicado. Guarda los cambios para conservarlo.', 'info');
     }
 
-    // Bio counter
+    // Bio counter (words and characters)
     document.getElementById('bio').addEventListener('input', updateBioCounter);
 
     function updateBioCounter() {
       const bio = document.getElementById('bio').value;
-      document.getElementById('bioCount').textContent = bio.length;
+      const words = bio.trim().split(/\s+/).filter(word => word.length > 0);
+      const wordCount = words.length;
+      const charCount = bio.length;
+
+      document.getElementById('bioCount').textContent = wordCount;
+      document.getElementById('bioCharCount').textContent = charCount;
+
+      const minWarning = document.getElementById('bioMinWarning');
+      const minSuccess = document.getElementById('bioMinSuccess');
+
+      if (wordCount < 120 && wordCount > 0) {
+        minWarning.classList.remove('hidden');
+        minSuccess.classList.add('hidden');
+      } else if (wordCount >= 120) {
+        minWarning.classList.add('hidden');
+        minSuccess.classList.remove('hidden');
+      } else {
+        minWarning.classList.add('hidden');
+        minSuccess.classList.add('hidden');
+      }
     }
 
     // Photo upload
@@ -521,6 +669,63 @@
       showToast('Foto seleccionada. Guarda los cambios para actualizar.', 'info');
     });
 
+    // Gallery photo uploads (5 photos)
+    for (let i = 1; i <= 5; i++) {
+      const previewEl = document.getElementById(`galleryPreview${i}`);
+      const inputEl = document.getElementById(`galleryInput${i}`);
+      const imageEl = document.getElementById(`galleryImage${i}`);
+      const removeBtn = document.getElementById(`galleryRemove${i}`);
+
+      // Click preview to upload
+      previewEl.addEventListener('click', () => {
+        inputEl.click();
+      });
+
+      // Handle file selection
+      inputEl.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          showToast('Por favor selecciona una imagen válida', 'error');
+          return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          showToast('La imagen debe ser menor a 5MB', 'error');
+          return;
+        }
+
+        galleryFiles[i - 1] = file;
+
+        // Preview
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          imageEl.src = event.target.result;
+          imageEl.classList.remove('hidden');
+          previewEl.classList.add('hidden');
+          removeBtn.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+
+        showToast(`Foto ${i} seleccionada`, 'info');
+      });
+
+      // Remove photo
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        galleryFiles[i - 1] = null;
+        inputEl.value = '';
+        imageEl.classList.add('hidden');
+        imageEl.src = '';
+        previewEl.classList.remove('hidden');
+        removeBtn.classList.add('hidden');
+        showToast(`Foto ${i} eliminada`, 'info');
+      });
+    }
+
     // Save profile
     window.saveProfile = async function() {
       const saveButton = document.getElementById('saveButton');
@@ -531,11 +736,40 @@
       const birthDate = document.getElementById('birthDate').value;
       const gender = document.getElementById('gender').value;
       const city = document.getElementById('city').value.trim();
+      const profession = document.getElementById('profession').value.trim();
+      const bio = document.getElementById('bio').value.trim();
       const relationshipStatus = document.getElementById('relationshipStatus').value;
       const lookingFor = document.getElementById('lookingFor').value;
 
-      if (!alias || !birthDate || !gender || !city || !relationshipStatus || !lookingFor) {
+      if (!alias || !birthDate || !gender || !city || !profession || !relationshipStatus || !lookingFor) {
         showToast('Por favor completa todos los campos obligatorios', 'warning');
+        return;
+      }
+
+      // Validate bio (minimum 120 words)
+      const words = bio.split(/\s+/).filter(word => word.length > 0);
+      if (words.length < 120) {
+        showToast(`La autodescripción debe tener al menos 120 palabras. Actualmente tiene ${words.length}`, 'warning');
+        return;
+      }
+
+      // Validate gallery photos (minimum 2 required)
+      const uploadedGalleryCount = galleryFiles.filter(file => file !== null).length;
+      const existingGalleryCount = currentUserData.galleryPhotos ? currentUserData.galleryPhotos.filter(url => url).length : 0;
+
+      // Count total gallery photos (existing + new)
+      let totalGalleryPhotos = existingGalleryCount;
+      galleryFiles.forEach((file, index) => {
+        if (file !== null) {
+          // New file will replace existing
+          if (!currentUserData.galleryPhotos || !currentUserData.galleryPhotos[index]) {
+            totalGalleryPhotos++;
+          }
+        }
+      });
+
+      if (totalGalleryPhotos < 2) {
+        showToast('Debes subir al menos 2 fotos adicionales en la galería', 'warning');
         return;
       }
 
@@ -559,12 +793,24 @@
       try {
         let photoURL = currentUserData.photoURL;
 
-        // Upload photo if selected
+        // Upload avatar photo if selected
         if (photoFile) {
-          const storageRef = ref(storage, `profile_photos/${currentUser.uid}`);
+          const storageRef = ref(storage, `profile_photos/${currentUser.uid}/avatar`);
           await uploadBytes(storageRef, photoFile);
           photoURL = await getDownloadURL(storageRef);
-          console.log('Photo uploaded:', photoURL);
+          console.log('Avatar uploaded:', photoURL);
+        }
+
+        // Upload gallery photos
+        const galleryPhotos = currentUserData.galleryPhotos || [];
+        for (let i = 0; i < 5; i++) {
+          if (galleryFiles[i]) {
+            const storageRef = ref(storage, `profile_photos/${currentUser.uid}/gallery_${i + 1}`);
+            await uploadBytes(storageRef, galleryFiles[i]);
+            const url = await getDownloadURL(storageRef);
+            galleryPhotos[i] = url;
+            console.log(`Gallery photo ${i + 1} uploaded:`, url);
+          }
         }
 
         // Update Firestore
@@ -574,12 +820,14 @@
           birthDate: birthDate,
           gender: gender,
           city: city,
-          bio: document.getElementById('bio').value.trim(),
+          profession: profession,
+          bio: bio,
           relationshipStatus: relationshipStatus,
           lookingFor: lookingFor,
           ageRangeMin: parseInt(document.getElementById('ageRangeMin').value) || 18,
           ageRangeMax: parseInt(document.getElementById('ageRangeMax').value) || 99,
           photoURL: photoURL,
+          galleryPhotos: galleryPhotos,
           theme: selectedTheme,
           updatedAt: serverTimestamp()
         });

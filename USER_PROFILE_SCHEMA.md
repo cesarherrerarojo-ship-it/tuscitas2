@@ -24,9 +24,11 @@ The document ID is the user's Firebase Authentication UID.
 
   birthDate: string,                // Format: "YYYY-MM-DD" (must be 18+ years old)
   gender: string,                   // "masculino" | "femenino" (only these two options)
-  city: string,                     // User's city/location
-  bio: string,                      // About me / bio (max 500 characters)
-  photoURL: string,                 // Profile photo URL (from Firebase Storage)
+  city: string,                     // User's municipio (municipality) - NOT full address for security
+  profession: string,               // User's profession or occupation
+  bio: string,                      // Self-description (minimum 120 words required)
+  photoURL: string,                 // Avatar photo URL (from Firebase Storage)
+  galleryPhotos: [string],          // Array of gallery photo URLs (minimum 2, maximum 5 required)
 
   // Location for distance calculation
   location: {
@@ -119,9 +121,11 @@ The document ID is the user's Firebase Authentication UID.
 |-------|------|----------|----------|-------|
 | `birthDate` | string | ✅ Yes | ✅ Yes | Format: YYYY-MM-DD, must be 18+ |
 | `gender` | string | ✅ Yes | ✅ Yes | Only "masculino" or "femenino" |
-| `city` | string | ✅ Yes | ✅ Yes | User's city |
-| `bio` | string | ❌ No | ✅ Yes | Max 500 characters |
-| `photoURL` | string | ❌ No | ✅ Yes | Uploaded to Firebase Storage |
+| `city` | string | ✅ Yes | ✅ Yes | User's municipio (NOT full address for security) |
+| `profession` | string | ✅ Yes | ✅ Yes | User's profession or occupation |
+| `bio` | string | ✅ Yes | ✅ Yes | Minimum 120 words required, max 500 characters |
+| `photoURL` | string | ✅ Yes | ✅ Yes | Avatar photo, uploaded to Firebase Storage |
+| `galleryPhotos` | array | ✅ Yes | ✅ Yes | 2-5 additional photos required |
 | `location` | object | ❌ No | ✅ Yes | For distance calculations |
 
 ### Relationship Status & Preferences
@@ -182,12 +186,45 @@ The document ID is the user's Firebase Authentication UID.
 - Shown as read-only in profile page
 - Used throughout the app instead of email
 
-### Profile Photo
+### Profile Photos
 
-- Stored in Firebase Storage at `profile_photos/{userId}`
+**Avatar (Required):**
+- Stored in Firebase Storage at `profile_photos/{userId}/avatar`
 - Maximum size: **5MB**
 - Accepted formats: `image/*` (jpg, png, gif, webp, etc.)
 - Falls back to initial letter if no photo
+- **Must be uploaded before saving profile**
+
+**Gallery Photos (2-5 Required):**
+- Stored in Firebase Storage at `profile_photos/{userId}/gallery_1` through `gallery_5`
+- Maximum size: **5MB per photo**
+- Accepted formats: `image/*` (jpg, png, gif, webp, etc.)
+- **Minimum 2 photos required**
+- **Maximum 5 photos allowed**
+- User must upload at least 2 before saving profile
+
+### City/Municipio
+
+- Users should only provide their **municipio (municipality)**, NOT their full address
+- This is for **security and privacy reasons**
+- Full addresses should never be stored or displayed
+- Distance calculations use the `location` object (lat/lng) if provided
+
+### Profession
+
+- Set during profile creation or editing
+- Can be changed at any time
+- Examples: "Ingeniero", "Médico", "Estudiante", "Empresario", etc.
+- No character limit
+
+### Bio/Autodescripción
+
+- **Minimum 120 words required**
+- Maximum 500 characters
+- Real-time word counter shown to user
+- Warning indicator if less than 120 words
+- Success indicator when requirement is met
+- Cannot save profile without meeting minimum requirement
 
 ### Relationship Status Options
 
@@ -325,7 +362,7 @@ Reputation affects:
 1. User navigates to `/webapp/perfil.html`
 2. Profile loads from Firestore
 3. User edits fields:
-   - ✅ Editable: birthDate, gender, city, bio, photo, relationshipStatus, lookingFor, ageRange
+   - ✅ Editable: birthDate, gender, city (municipio), profession, bio, avatar, gallery photos, relationshipStatus, lookingFor, ageRange, theme
    - ❌ Read-only: alias (set during registration), email
 4. User clicks "Guardar Cambios"
 5. Validation:
@@ -334,13 +371,25 @@ Reputation affects:
    - Valid gender selection
    - Valid relationship status
    - Valid looking for option
-6. If photo selected:
-   - Upload to Firebase Storage (`profile_photos/{userId}`)
+   - **Bio minimum 120 words**
+   - **Avatar photo uploaded**
+   - **Minimum 2 gallery photos uploaded**
+6. If avatar photo selected:
+   - Upload to Firebase Storage (`profile_photos/{userId}/avatar`)
    - Get download URL
-   - Save URL to Firestore
-7. Update Firestore with new data
-8. Show success modal
-9. Reload profile
+   - Save URL to Firestore `photoURL` field
+7. If gallery photos selected:
+   - Upload each to Firebase Storage (`profile_photos/{userId}/gallery_1` through `gallery_5`)
+   - Get download URLs
+   - Save URLs array to Firestore `galleryPhotos` field
+8. Update Firestore with new data:
+   - Personal info: birthDate, gender, city, profession, bio
+   - Photos: photoURL, galleryPhotos
+   - Preferences: relationshipStatus, lookingFor, ageRange
+   - Personalization: theme
+   - Timestamp: updatedAt
+9. Show success modal
+10. Reload profile
 
 ---
 
@@ -371,29 +420,55 @@ Reputation affects:
 ```
 gs://YOUR_BUCKET/
 └── profile_photos/
-    ├── {userId1}
-    ├── {userId2}
-    └── {userId3}
+    └── {userId}/
+        ├── avatar              (Main profile photo - required)
+        ├── gallery_1           (Gallery photo 1)
+        ├── gallery_2           (Gallery photo 2)
+        ├── gallery_3           (Gallery photo 3)
+        ├── gallery_4           (Gallery photo 4)
+        └── gallery_5           (Gallery photo 5)
 ```
 
 ### Photo Upload Process
 
-1. User selects photo from device
+**Avatar Photo:**
+1. User clicks camera icon on avatar
 2. Validation:
    - File type must be image
    - File size max 5MB
 3. Preview shown immediately (local preview)
 4. On "Guardar Cambios":
-   - Upload to `profile_photos/{userId}`
-   - Overwrites previous photo
+   - Upload to `profile_photos/{userId}/avatar`
+   - Overwrites previous avatar
    - Get download URL
    - Save URL to Firestore `photoURL` field
 
+**Gallery Photos (2-5 required):**
+1. User clicks on gallery slot (1-5)
+2. Validation:
+   - File type must be image
+   - File size max 5MB
+   - Minimum 2 photos required
+   - Maximum 5 photos allowed
+3. Preview shown immediately with remove button
+4. On "Guardar Cambios":
+   - Upload to `profile_photos/{userId}/gallery_1` through `gallery_5`
+   - Overwrites photo at that slot if exists
+   - Get download URLs
+   - Save URLs array to Firestore `galleryPhotos` field
+
 ### Photo Display
 
+**Avatar:**
 - **If photoURL exists**: Show actual photo
 - **If photoURL is empty**: Show colored circle with first letter of alias
 - **Default color**: Purple gradient
+
+**Gallery:**
+- **If photo exists**: Show actual photo with remove button
+- **If slot is empty**: Show "+" placeholder to upload
+- **Minimum requirement**: 2 photos must be uploaded
+- **Visual indicator**: Warning shown if less than 2 photos
 
 ---
 
@@ -421,48 +496,75 @@ Additional filters based on preferences:
 - ✅ email (from Firebase Auth)
 - ✅ birthDate (must be 18+)
 - ✅ gender (masculino or femenino only)
-- ✅ city
+- ✅ city (municipio only, not full address)
+- ✅ profession (occupation)
+- ✅ bio (minimum 120 words)
+- ✅ photoURL (avatar photo)
+- ✅ galleryPhotos (minimum 2, maximum 5)
 - ✅ relationshipStatus
 - ✅ lookingFor
 
 ### Optional Fields:
-- bio (max 500 characters)
-- photoURL
-- location
+- location (for distance calculations)
 - ageRangeMin (default: 18)
 - ageRangeMax (default: 99)
 - availability (women only)
 
-### Character Limits:
+### Word/Character Limits:
 - alias: No limit (set during registration)
-- bio: 500 characters
-- city: No limit
+- bio: **Minimum 120 words required**, max 500 characters
+- city: No limit (municipio name)
+- profession: No limit
 - email: No limit (from Firebase)
+
+### Photo Requirements:
+- **Avatar (photoURL)**: Required, 1 photo
+- **Gallery (galleryPhotos)**: Required, minimum 2 photos, maximum 5 photos
+- **File type**: Must be image/* (jpg, png, gif, webp, etc.)
+- **File size**: Maximum 5MB per photo
+- **Total photos**: Minimum 3 (1 avatar + 2 gallery), maximum 6 (1 avatar + 5 gallery)
 
 ---
 
 ## 🎨 UI/UX Notes
 
 ### Profile Photo Section
-- Circular photo 150x150px
-- Camera icon button to upload
-- Purple gradient placeholder with initial
-- 4px white border with transparency
+- **Avatar**: Circular photo 150x150px
+  - Camera icon button to upload
+  - Purple gradient placeholder with initial
+  - 4px white border with transparency
+  - Required field
+
+- **Gallery**: Grid of 5 photo slots (3 columns on mobile, 5 on desktop)
+  - Each slot: 120x120px
+  - "+" icon placeholder for empty slots
+  - Preview image with remove button (X) for filled slots
+  - Click to upload new photo
+  - Minimum 2 photos required warning shown below grid
 
 ### Form Sections
 1. **Información Personal** (purple icon)
-   - Alias (read-only)
+   - Alias (read-only, shown in gray)
    - Birth date
    - Gender
-   - City
-   - Bio
+   - Municipio (with security note: "Solo indica el municipio, no tu dirección completa por seguridad")
+   - Profesión/Ocupación
+   - Autodescripción (6 rows textarea)
+     * Word counter with warning/success indicators
+     * Shows: "X palabras (Y caracteres)"
+     * Warning icon if < 120 words
+     * Success icon if >= 120 words
 
 2. **Estado Sentimental y Preferencias** (pink icon)
    - Relationship status
    - Looking for
    - Age range (min/max)
 
-3. **Zona Peligrosa** (red icon)
+3. **Personalización** (theme icon)
+   - Theme selector with 6 color options
+   - Visual preview of each theme with icon
+
+4. **Zona Peligrosa** (red icon)
    - Delete account button
 
 ### Buttons
