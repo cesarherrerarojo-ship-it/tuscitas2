@@ -6,7 +6,38 @@ TuCitaSegura implementa un **modelo de negocio basado en membresías y seguro an
 
 ---
 
-## 👥 Reglas por Género
+## 👥 Reglas por Rol y Género
+
+### 🎩 Usuarios Concierge (NUEVO - Premium)
+
+**NUEVO ROL:** Usuarios verificados que pueden publicar eventos VIP para seleccionar candidatas.
+
+#### Suscripción Concierge (€199/mes)
+**Requerido para:**
+- ✅ Publicar eventos VIP
+- ✅ Acceder a panel de gestión de eventos
+- ✅ Ver aplicantes y seleccionar candidatas
+- ✅ Badge "Concierge Verificado 🎩"
+- ✅ Soporte prioritario
+
+**Requisitos adicionales:**
+- 🔐 Verificación de identidad (KYC)
+- 👥 Aprobación manual del equipo
+- 💳 Pago mensual de €199
+- 📋 Aceptar términos específicos de Concierge
+
+**Sin suscripción Concierge NO puedes:**
+- ❌ Publicar eventos VIP
+- ❌ Acceder a base de candidatas
+- ❌ Gestionar selección de aplicantes
+
+**Acceso especial:**
+- 📊 Dashboard exclusivo en `/webapp/concierge-dashboard.html`
+- 📝 Publicación ilimitada de eventos VIP
+- 👁️ Visualización de perfiles de aplicantes
+- 📧 Notificaciones cuando alguien aplica
+
+---
 
 ### 🚹 Usuarios Masculinos (Actuales)
 
@@ -52,7 +83,33 @@ TuCitaSegura implementa un **modelo de negocio basado en membresías y seguro an
 
 ## 💳 Productos y Precios
 
-### 1. Membresía Premium
+### 1. Suscripción Concierge (NUEVO)
+
+```
+┌──────────────────────────────────────┐
+│ PLAN CONCIERGE                       │
+│                                      │
+│ €199/mes                             │
+│                                      │
+│ ✅ Publicación ilimitada de eventos  │
+│ ✅ Acceso a base de candidatas       │
+│ ✅ Sistema de selección avanzado     │
+│ ✅ Badge Concierge Verificado 🎩     │
+│ ✅ Notificaciones prioritarias       │
+│ ✅ Soporte dedicado 24/7             │
+│                                      │
+│ [Solicitar Concierge]                │
+└──────────────────────────────────────┘
+```
+
+**Renovación:** Automática cada mes
+**Cancelación:** En cualquier momento
+**Aprobación:** Requiere verificación KYC y aprobación manual
+**Uso:** Publicación de eventos VIP para selección de candidatas
+
+---
+
+### 2. Membresía Premium
 
 ```
 ┌──────────────────────────────────────┐
@@ -184,7 +241,22 @@ Usuario con membresía + seguro →
   gender: "masculino" | "femenino" | "otro",
   birthDate: string, // YYYY-MM-DD
 
-  // ✅ CAMPOS DE PAGO (NUEVOS)
+  // ✅ ROL DE USUARIO (NUEVO)
+  userRole: "regular" | "admin" | "concierge",  // Rol del usuario
+  isAdmin: boolean,                             // Acceso admin (legacy)
+  isConcierge: boolean,                         // Shortcut para concierge
+
+  // ✅ CAMPOS CONCIERGE (NUEVO)
+  conciergeStatus: "pending" | "approved" | "suspended",  // Estado aprobación
+  conciergeApprovedAt: Timestamp,               // Cuándo fue aprobado
+  conciergeSubscriptionId: string,              // Stripe subscription Concierge
+  conciergeSubscriptionStatus: "active" | "canceled" | "expired",
+  conciergeSubscriptionStartDate: Timestamp,
+  conciergeSubscriptionEndDate: Timestamp,
+  totalEventsPublished: number,                 // Total eventos VIP publicados
+  totalApplicantsReceived: number,              // Total aplicantes recibidos
+
+  // ✅ CAMPOS DE PAGO (REGULARES)
   hasActiveSubscription: boolean,       // ¿Tiene membresía activa?
   subscriptionId: string,               // ID de Stripe/PayPal
   subscriptionStartDate: Timestamp,     // Inicio de membresía
