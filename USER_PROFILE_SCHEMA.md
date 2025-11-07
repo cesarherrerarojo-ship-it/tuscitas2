@@ -230,11 +230,12 @@ The document ID is the user's Firebase Authentication UID.
 
 ```javascript
 const relationshipStatuses = {
-  soltero: "Soltero/a",
-  divorciado: "Divorciado/a",
-  viudo: "Viudo/a",
-  separado: "Separado/a",
-  complicado: "Es complicado"
+  felizmente_separado: "Felizmente Separado o Divorciado",
+  casado_golfo: "Casado y Golfo",
+  viudo: "Viudo",
+  libre_pajaro: "Libre como un Pájaro",
+  no_contestar: "Prefiero No Contestar",
+  builder: "Builder"
 };
 ```
 
