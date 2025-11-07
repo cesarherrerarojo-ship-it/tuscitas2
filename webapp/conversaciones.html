@@ -342,6 +342,9 @@
         return;
       }
 
+      // Calculate 'now' once to prevent hydration mismatch across all conversations
+      const now = new Date();
+
       conversationsList.innerHTML = filtered.map(conv => {
         const otherUser = conv.otherUser;
         const alias = otherUser.alias || 'Usuario';
@@ -352,7 +355,6 @@
         // Time ago
         let timeAgo = 'Hace tiempo';
         if (conv.lastMessageTime) {
-          const now = new Date();
           const messageTime = conv.lastMessageTime.toDate();
           const diffMs = now - messageTime;
           const diffMins = Math.floor(diffMs / 60000);

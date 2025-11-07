@@ -1119,10 +1119,16 @@
             const age = data.birthDate ? calculateAge(data.birthDate) : null;
 
             // Add mock location if not present (for demo purposes)
+            // Use deterministic values based on user ID to prevent hydration mismatch
             if (!data.location) {
+              const userId = doc.id;
+              const hash = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+              const latOffset = ((hash % 100) / 100 - 0.5) * 0.2;
+              const lngOffset = (((hash * 13) % 100) / 100 - 0.5) * 0.2;
+
               data.location = {
-                lat: 40.4168 + (Math.random() - 0.5) * 0.2,
-                lng: -3.7038 + (Math.random() - 0.5) * 0.2
+                lat: 40.4168 + latOffset,
+                lng: -3.7038 + lngOffset
               };
             }
 
@@ -1407,10 +1413,15 @@
       // Bio
       document.getElementById('modalBio').textContent = user.bio || 'Este usuario no ha agregado una descripción todavía.';
 
-      // Stats
-      document.getElementById('modalCitasCompletadas').textContent = Math.floor(Math.random() * 20) + 5;
-      document.getElementById('modalCompatibilidad').textContent = `${Math.floor(Math.random() * 30) + 70}%`;
-      document.getElementById('modalRespuesta').textContent = `${Math.floor(Math.random() * 30) + 65}%`;
+      // Stats - Use deterministic values based on user ID to prevent hydration mismatch
+      const userIdHash = user.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const completedDates = (userIdHash % 20) + 5;
+      const compatibility = calculateCompatibility(currentUserData, user);
+      const responseRate = ((userIdHash * 13) % 30) + 65;
+
+      document.getElementById('modalCitasCompletadas').textContent = completedDates;
+      document.getElementById('modalCompatibilidad').textContent = `${compatibility}%`;
+      document.getElementById('modalRespuesta').textContent = `${responseRate}%`;
 
       // Map in modal
       if (user.location) {
@@ -1442,9 +1453,14 @@
         document.getElementById('modalMapContainer').classList.add('hidden');
       }
 
-      // Interests
+      // Interests - Use deterministic selection based on user ID to prevent hydration mismatch
       const interests = ['Música', 'Viajes', 'Deportes', 'Cine', 'Lectura'];
-      const userInterests = interests.slice(0, Math.floor(Math.random() * 3) + 2);
+      const interestCount = (userIdHash % 3) + 2; // 2-4 interests
+      const startIndex = userIdHash % interests.length;
+      const userInterests = [];
+      for (let i = 0; i < interestCount; i++) {
+        userInterests.push(interests[(startIndex + i) % interests.length]);
+      }
       if (userInterests.length > 0) {
         document.getElementById('modalInterestsSection').classList.remove('hidden');
         document.getElementById('modalInterests').innerHTML = userInterests.map(interest =>

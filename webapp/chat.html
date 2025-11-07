@@ -784,6 +784,9 @@
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       const today = new Date();
 
+      // Create a date object for today at midnight for comparison (prevents mutation bug)
+      const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
       // Adjust firstDay (Monday = 0)
       const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
 
@@ -798,7 +801,7 @@
       // Days of month
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(year, month, day);
-        const isPast = date < today.setHours(0, 0, 0, 0);
+        const isPast = date < todayMidnight;
         const isSelected = selectedDate && selectedDate.getDate() === day &&
                           selectedDate.getMonth() === month &&
                           selectedDate.getFullYear() === year;
