@@ -636,10 +636,14 @@
 
       if (!text) return;
 
-      // Check payment
+      // Check payment - CRITICAL VALIDATION
       const userMustPay = currentUserData.gender === 'masculino';
       if (userMustPay && !currentUserData.hasActiveSubscription) {
-        showToast('Necesitas una membresía activa para enviar mensajes', 'warning');
+        showToast('⚠️ Membresía requerida para enviar mensajes', 'error');
+        // Show modal and redirect
+        if (confirm('Necesitas una membresía activa (€29.99/mes) para enviar mensajes.\n\n¿Deseas activar tu membresía ahora?')) {
+          window.location.href = '/webapp/suscripcion.html';
+        }
         return;
       }
 
@@ -746,14 +750,17 @@
 
     // Date proposal
     window.openDateProposal = function() {
-      // Check insurance
+      // Check insurance - CRITICAL VALIDATION
       const userMustPay = currentUserData.gender === 'masculino';
       if (userMustPay && !currentUserData.hasAntiGhostingInsurance) {
-        document.getElementById('insuranceWarning').classList.remove('hidden');
-      } else {
-        document.getElementById('insuranceWarning').classList.add('hidden');
+        showToast('🛡️ Seguro Anti-Plantón requerido para proponer citas', 'error');
+        if (confirm('Para proponer y agendar citas necesitas contratar el Seguro Anti-Plantón (€120 pago único).\n\nEste seguro te protege en caso de plantones y es válido de por vida.\n\n¿Deseas contratar el seguro ahora?')) {
+          window.location.href = '/webapp/seguro.html';
+        }
+        return;
       }
 
+      document.getElementById('insuranceWarning').classList.add('hidden');
       document.getElementById('dateProposalModal').classList.remove('hidden');
       renderCalendar();
     };
@@ -864,10 +871,14 @@
     document.getElementById('datePlace').addEventListener('input', updateDateSummary);
 
     window.submitDateProposal = async function() {
-      // Check insurance
+      // Check insurance - DOUBLE VALIDATION (should not reach here without insurance)
       const userMustPay = currentUserData.gender === 'masculino';
       if (userMustPay && !currentUserData.hasAntiGhostingInsurance) {
-        showToast('Necesitas el seguro anti-plantón para proponer citas', 'warning');
+        showToast('🛡️ Seguro Anti-Plantón requerido (€120)', 'error');
+        closeDateProposal();
+        if (confirm('Para proponer citas necesitas el Seguro Anti-Plantón.\n\n¿Deseas contratar el seguro ahora?')) {
+          window.location.href = '/webapp/seguro.html';
+        }
         return;
       }
 

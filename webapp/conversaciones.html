@@ -451,8 +451,18 @@
       }).join('');
     }
 
-    // Open chat
+    // Open chat - WITH MEMBERSHIP VALIDATION
     window.openChat = function(conversationId, otherUserId) {
+      // Check membership requirement before opening chat
+      const userMustPay = currentUserData.gender === 'masculino';
+      if (userMustPay && !currentUserData.hasActiveSubscription) {
+        showToast('⚠️ Membresía requerida para chatear', 'error');
+        if (confirm('Necesitas una membresía activa (€29.99/mes) para acceder al chat.\n\n¿Deseas activar tu membresía ahora?')) {
+          window.location.href = '/webapp/suscripcion.html';
+        }
+        return;
+      }
+
       window.location.href = `/webapp/chat.html?conversationId=${conversationId}&userId=${otherUserId}`;
     };
 
