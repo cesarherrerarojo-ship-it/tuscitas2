@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TuCitaSegura - Encuentra tu conexión perfecta</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0369a1 100%);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .hero-gradient {
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%);
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+
+    .float-animation {
+      animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in-up {
+      animation: fadeInUp 0.8s ease-out;
+    }
+  </style>
+</head>
+<body class="text-white">
+
+  <!-- Header -->
+  <header class="glass fixed top-0 w-full z-50">
+    <nav class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="/" class="flex items-center gap-2">
+        <i class="fas fa-heart-circle-check text-blue-400 text-2xl"></i>
+        <span class="font-bold text-xl">TuCitaSegura</span>
+      </a>
+      <div class="flex items-center gap-4">
+        <a href="/webapp/buscar-usuarios.html" class="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-lg font-semibold transition">
+          Comenzar
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="pt-24 pb-12 px-4">
+    <div class="max-w-7xl mx-auto">
+
+      <!-- Hero Content -->
+      <div class="text-center mb-20 fade-in-up">
+        <div class="mb-8 float-animation inline-block">
+          <i class="fas fa-heart-circle-check text-blue-400 text-8xl"></i>
+        </div>
+        <h1 class="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+          TuCitaSegura
+        </h1>
+        <p class="text-xl md:text-2xl text-slate-300 mb-8 max-w-3xl mx-auto">
+          Encuentra tu conexión perfecta con seguridad, transparencia y respeto
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <a href="/webapp/buscar-usuarios.html" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 px-8 py-4 rounded-lg font-semibold text-lg transition transform hover:scale-105">
+            <i class="fas fa-search mr-2"></i>Explorar Usuarios
+          </a>
+          <a href="#features" class="glass px-8 py-4 rounded-lg font-semibold text-lg transition transform hover:scale-105">
+            <i class="fas fa-info-circle mr-2"></i>Saber Más
+          </a>
+        </div>
+      </div>
+
+      <!-- Features Section -->
+      <div id="features" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
+        <div class="glass rounded-2xl p-8 text-center fade-in-up">
+          <div class="text-5xl mb-4">
+            <i class="fas fa-shield-heart text-blue-400"></i>
+          </div>
+          <h3 class="text-2xl font-bold mb-3">100% Seguro</h3>
+          <p class="text-slate-300">
+            Verificación de identidad, reputación transparente y protección de datos garantizada
+          </p>
+        </div>
+
+        <div class="glass rounded-2xl p-8 text-center fade-in-up" style="animation-delay: 0.2s;">
+          <div class="text-5xl mb-4">
+            <i class="fas fa-search-plus text-purple-400"></i>
+          </div>
+          <h3 class="text-2xl font-bold mb-3">Búsqueda Avanzada</h3>
+          <p class="text-slate-300">
+            Filtros inteligentes por edad, ciudad, reputación y más para encontrar tu match ideal
+          </p>
+        </div>
+
+        <div class="glass rounded-2xl p-8 text-center fade-in-up" style="animation-delay: 0.4s;">
+          <div class="text-5xl mb-4">
+            <i class="fas fa-star text-yellow-400"></i>
+          </div>
+          <h3 class="text-2xl font-bold mb-3">Sistema de Reputación</h3>
+          <p class="text-slate-300">
+            Badges de Bronce, Plata, Oro y Platino basados en comportamiento y feedback
+          </p>
+        </div>
+      </div>
+
+      <!-- Stats Section -->
+      <div class="glass rounded-2xl p-12 mb-20 text-center">
+        <h2 class="text-3xl font-bold mb-8">
+          <i class="fas fa-chart-line mr-2 text-blue-400"></i>
+          Estadísticas de la Plataforma
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div>
+            <div class="text-5xl font-bold text-blue-400 mb-2">10K+</div>
+            <div class="text-slate-300">Usuarios Activos</div>
+          </div>
+          <div>
+            <div class="text-5xl font-bold text-pink-400 mb-2">5K+</div>
+            <div class="text-slate-300">Matches Exitosos</div>
+          </div>
+          <div>
+            <div class="text-5xl font-bold text-green-400 mb-2">95%</div>
+            <div class="text-slate-300">Satisfacción</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- How it Works -->
+      <div class="mb-20">
+        <h2 class="text-4xl font-bold text-center mb-12">
+          <i class="fas fa-lightbulb mr-2 text-yellow-400"></i>
+          ¿Cómo Funciona?
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div class="glass rounded-2xl p-6 text-center">
+            <div class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">1</div>
+            <h3 class="font-bold mb-2">Regístrate</h3>
+            <p class="text-sm text-slate-300">Crea tu perfil y verifica tu email</p>
+          </div>
+          <div class="glass rounded-2xl p-6 text-center">
+            <div class="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">2</div>
+            <h3 class="font-bold mb-2">Explora</h3>
+            <p class="text-sm text-slate-300">Busca usuarios con filtros avanzados</p>
+          </div>
+          <div class="glass rounded-2xl p-6 text-center">
+            <div class="w-16 h-16 bg-pink-500 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">3</div>
+            <h3 class="font-bold mb-2">Conecta</h3>
+            <p class="text-sm text-slate-300">Envía solicitudes de cita</p>
+          </div>
+          <div class="glass rounded-2xl p-6 text-center">
+            <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">4</div>
+            <h3 class="font-bold mb-2">Conoce</h3>
+            <p class="text-sm text-slate-300">Agenda citas seguras</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA Section -->
+      <div class="glass rounded-2xl p-12 text-center hero-gradient">
+        <h2 class="text-4xl font-bold mb-4">
+          ¿Listo para encontrar tu match perfecto?
+        </h2>
+        <p class="text-xl text-slate-300 mb-8">
+          Únete a miles de personas que ya encontraron su conexión especial
+        </p>
+        <a href="/webapp/buscar-usuarios.html" class="inline-block bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 px-10 py-4 rounded-lg font-semibold text-lg transition transform hover:scale-105">
+          <i class="fas fa-heart mr-2"></i>Comenzar Ahora
+        </a>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="glass mt-20 py-8">
+    <div class="max-w-7xl mx-auto px-4 text-center">
+      <div class="flex items-center justify-center gap-2 mb-4">
+        <i class="fas fa-heart-circle-check text-blue-400 text-2xl"></i>
+        <span class="font-bold text-xl">TuCitaSegura</span>
+      </div>
+      <p class="text-slate-400 mb-4">
+        Encuentra conexiones auténticas con seguridad y respeto
+      </p>
+      <div class="flex justify-center gap-6 mb-4">
+        <a href="#" class="text-slate-400 hover:text-blue-400 transition">
+          <i class="fab fa-facebook text-2xl"></i>
+        </a>
+        <a href="#" class="text-slate-400 hover:text-pink-400 transition">
+          <i class="fab fa-instagram text-2xl"></i>
+        </a>
+        <a href="#" class="text-slate-400 hover:text-blue-300 transition">
+          <i class="fab fa-twitter text-2xl"></i>
+        </a>
+      </div>
+      <p class="text-sm text-slate-500">
+        © 2025 TuCitaSegura. Todos los derechos reservados.
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>
