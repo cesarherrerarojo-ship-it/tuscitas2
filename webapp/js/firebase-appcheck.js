@@ -1,16 +1,16 @@
 // Firebase App Check Configuration
 // Importar ANTES de firebase-config.js en todos los archivos HTML
 
-import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js";
 import app from './firebase-config.js';
 
 // ============================================================================
-// CONFIGURACIÓN DE APP CHECK CON RECAPTCHA V3
+// CONFIGURACIÓN DE APP CHECK CON RECAPTCHA ENTERPRISE
 // ============================================================================
 
-// IMPORTANTE: Reemplaza con tu site key REAL de reCAPTCHA v3
-// Obtener desde: https://console.cloud.google.com/security/recaptcha
-const RECAPTCHA_V3_SITE_KEY = '6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2'; // TODO: Verificar si esta es tu key real
+// IMPORTANTE: Esta es tu reCAPTCHA ENTERPRISE site key
+// reCAPTCHA Enterprise != reCAPTCHA v3 (requiere provider diferente)
+const RECAPTCHA_ENTERPRISE_SITE_KEY = '6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2';
 
 // ============================================================================
 // 1. MODO DEBUG PARA DESARROLLO LOCAL
@@ -36,19 +36,20 @@ if (isDevelopment) {
 }
 
 // ============================================================================
-// 2. INICIALIZAR APP CHECK
+// 2. INICIALIZAR APP CHECK CON RECAPTCHA ENTERPRISE
 // ============================================================================
 let appCheck = null;
 
 try {
   // Validar site key
-  if (!RECAPTCHA_V3_SITE_KEY || RECAPTCHA_V3_SITE_KEY === 'YOUR_RECAPTCHA_V3_SITE_KEY') {
-    throw new Error('reCAPTCHA site key no configurada');
+  if (!RECAPTCHA_ENTERPRISE_SITE_KEY || RECAPTCHA_ENTERPRISE_SITE_KEY === 'YOUR_RECAPTCHA_SITE_KEY') {
+    throw new Error('reCAPTCHA Enterprise site key no configurada');
   }
 
-  // Inicializar App Check con reCAPTCHA v3
+  // Inicializar App Check con reCAPTCHA ENTERPRISE
+  // NOTA: Usamos ReCaptchaEnterpriseProvider, NO ReCaptchaV3Provider
   appCheck = initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(RECAPTCHA_V3_SITE_KEY),
+    provider: new ReCaptchaEnterpriseProvider(RECAPTCHA_ENTERPRISE_SITE_KEY),
     isTokenAutoRefreshEnabled: true // Auto-refresh tokens antes de expirar
   });
 
@@ -56,7 +57,8 @@ try {
   window._appCheckInstance = appCheck;
 
   console.log('✅ App Check inicializado correctamente');
-  console.log(`📍 Modo: ${isDevelopment ? 'DESARROLLO (debug tokens)' : 'PRODUCCIÓN (reCAPTCHA v3)'}`);
+  console.log(`📍 Modo: ${isDevelopment ? 'DESARROLLO (debug tokens)' : 'PRODUCCIÓN (reCAPTCHA Enterprise)'}`);
+  console.log(`🔑 Provider: reCAPTCHA Enterprise`);
 
   // En desarrollo, mostrar cuando se obtiene el debug token
   if (isDevelopment) {
@@ -68,16 +70,11 @@ try {
 
   if (error.message.includes('site key')) {
     console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.warn('📝 Para obtener reCAPTCHA v3 site key:');
+    console.warn('📝 Para verificar reCAPTCHA Enterprise site key:');
     console.warn('   1. https://console.cloud.google.com/security/recaptcha');
     console.warn('   2. Selecciona proyecto: tuscitasseguras-2d1a6');
-    console.warn('   3. Haz clic en "+ CREATE KEY"');
-    console.warn('   4. Configuración:');
-    console.warn('      - Display name: TuCitaSegura Web');
-    console.warn('      - Key type: Challenge (v3)');
-    console.warn('      - Domains: localhost, 127.0.0.1, tu-dominio.com');
-    console.warn('   5. Copia la "Site Key" (6Lxxx...)');
-    console.warn('   6. Reemplaza RECAPTCHA_V3_SITE_KEY en este archivo');
+    console.warn('   3. Verifica que la key existe y es tipo "Enterprise"');
+    console.warn('   4. Verifica que los dominios incluyen: localhost, 127.0.0.1');
     console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   }
 
@@ -106,6 +103,30 @@ window.getAppCheckToken = async function() {
     return tokenResult;
   } catch (error) {
     console.error('❌ Error obteniendo token:', error);
+    console.error('   Code:', error.code);
+    console.error('   Message:', error.message);
+
+    if (error.message.includes('400')) {
+      console.error('');
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.error('🚨 400 BAD REQUEST');
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.error('');
+      console.error('Causas comunes:');
+      console.error('  1. Site key no registrada en Firebase Console App Check');
+      console.error('  2. Dominio (localhost) no autorizado en reCAPTCHA');
+      console.error('  3. Enforcement activado sin configuración correcta');
+      console.error('');
+      console.error('SOLUCIÓN RÁPIDA:');
+      console.error('  1. Firebase Console → App Check → Overview');
+      console.error('  2. Desactiva Enforcement en:');
+      console.error('     - Authentication → Unenforced');
+      console.error('     - Cloud Firestore → Unenforced');
+      console.error('     - Cloud Storage → Unenforced');
+      console.error('  3. Recarga la página (Ctrl + Shift + R)');
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    }
+
     return null;
   }
 };
@@ -120,13 +141,30 @@ if (isDevelopment) {
     const tokenResult = await window.getAppCheckToken();
 
     if (tokenResult) {
+      console.log('');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('✅ App Check funcionando correctamente');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('✅ Todas las requests incluirán App Check tokens');
+      console.log('✅ NO deberías ver errores 401 o 403');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     } else {
-      console.warn('⚠️  App Check no pudo obtener token');
-      console.warn('   Posibles causas:');
-      console.warn('   - Debug token no añadido en Firebase Console');
-      console.warn('   - Site key incorrecta');
-      console.warn('   - Enforcement activado sin debug token');
+      console.log('');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('⚠️  App Check no pudo obtener token');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('');
+      console.log('Posibles causas:');
+      console.log('  ❌ Debug token no añadido en Firebase Console');
+      console.log('  ❌ Site key no registrada en Firebase Console App Check');
+      console.log('  ❌ Enforcement activado pero configuración incorrecta');
+      console.log('');
+      console.log('Pasos para solucionar:');
+      console.log('  1. Busca "App Check debug token:" arriba y copia el token');
+      console.log('  2. Registra el token en Firebase Console');
+      console.log('  3. Verifica que Enforcement está desactivado (Unenforced)');
+      console.log('  4. Recarga esta página');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
   }, 2000);
 }
