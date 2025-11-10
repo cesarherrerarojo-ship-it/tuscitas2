@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TuCitaSegura – Búsqueda</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+ <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous" />
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 35%, #0369a1 100%); overflow-x: hidden; }
+    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
+    .gradient-text { background: linear-gradient(135deg, #7dd3fc, #0ea5e9, #38bdf8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .btn-primary { background: linear-gradient(135deg, #0ea5e9, #0369a1); box-shadow: 0 8px 24px rgba(14,165,233,0.2); transition: all 0.3s ease; }
+    .btn-primary:hover { background: linear-gradient(135deg, #0284c7, #075985); box-shadow: 0 12px 40px rgba(14,165,233,0.35); transform: translateY(-2px); }
+    .card { border: 1px solid rgba(255,255,255,0.08); transition: all 0.2s; }
+    .card:hover { border-color: rgba(14,165,233,0.25); transform: translateY(-4px); box-shadow: 0 12px 36px rgba(14,165,233,0.12); }
+    .avatar { width: 64px; height: 64px; border-radius: 9999px; object-fit: cover; border: 2px solid rgba(255,255,255,0.2); }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0ea5e9; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1001; display:none; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="fixed top-0 left-0 w-full glass backdrop-blur-xl z-50">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-heart-circle-check text-blue-400 text-2xl"></i>
+        <span class="text-xl font-bold gradient-text">TuCitaSegura</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="userEmail" class="text-sm text-gray-300">—</span>
+        <button id="logoutBtn" class="glass px-5 py-2 rounded-full font-semibold hover:bg-white/20 transition-colors">Salir</button>
+      </div>
+    </nav>
+  </header>
+
+  <main class="min-h-screen px-4 pt-24 pb-12">
+    <section class="max-w-5xl mx-auto">
+      <h1 class="text-4xl font-black mb-2 gradient-text">Buscar Pareja</h1>
+      <p class="text-gray-300 mb-2">Solo se muestran resultados heterosexuales según tu género.</p>
+      <div id="membershipNotice" class="text-sm text-yellow-300 mb-6 hidden"></div>
+
+      <!-- CTA Eventos VIP (solo mujeres) -->
+      <div id="vipEventsBanner" class="hidden mb-4">
+        <a id="vipEventsBtn" href="/eventos-vip.html" class="btn-primary px-4 py-2 rounded-lg font-semibold">Ver Eventos VIP</a>
+        <span class="text-xs text-gray-300 ml-2">Solo para usuarias</span>
+      </div>
+
+      <!-- Filtros de búsqueda -->
+      <div class="glass rounded-2xl p-4 mb-6">
+        <div class="grid md:grid-cols-5 gap-3 items-end">
+          <div class="md:col-span-2">
+            <label class="text-xs text-gray-300">Palabra clave</label>
+            <input id="kwInput" type="text" placeholder="alias, ciudad, bio" class="w-full glass px-3 py-2 rounded-lg" />
+          </div>
+          <div>
+            <label class="text-xs text-gray-300">Edad (mín)</label>
+            <input id="ageMinInput" type="number" min="18" max="80" placeholder="18" class="w-full glass px-3 py-2 rounded-lg" />
+          </div>
+          <div>
+            <label class="text-xs text-gray-300">Edad (máx)</label>
+            <input id="ageMaxInput" type="number" min="18" max="80" placeholder="50" class="w-full glass px-3 py-2 rounded-lg" />
+          </div>
+          <div>
+            <label class="text-xs text-gray-300">Distancia (km)</label>
+            <input id="distInput" type="number" min="1" max="500" placeholder="50" class="w-full glass px-3 py-2 rounded-lg" />
+          </div>
+        </div>
+        <div class="mt-3 flex items-center gap-3">
+          <label class="text-xs text-gray-300">Ordenar por</label>
+          <select id="sortSelect" class="glass px-3 py-2 rounded-lg">
+            <option value="lastLogin_desc">Último login (recientes)</option>
+            <option value="createdAt_desc">Último registro (recientes)</option>
+          </select>
+          <button id="applyFiltersBtn" class="btn-primary px-4 py-2 rounded-lg font-semibold">Aplicar filtros</button>
+          <span id="resultsCount" class="text-xs text-gray-300 ml-auto">—</span>
+        </div>
+        <div id="filtersHint" class="text-xs text-gray-400 mt-2">Nota: Edad y distancia se aplican si el perfil tiene esos datos.</div>
+      </div>
+
+      <div id="infoMsg" class="text-sm text-yellow-300 mb-4 hidden"></div>
+
+      <div id="results" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+      <div id="emptyState" class="hidden text-center text-gray-400 mt-8">No hay resultados por ahora. Intenta más tarde.</div>
+    </section>
+    <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+  </main>
+
+  <!-- Guardia de sesión/perfil -->
+  <script type="module" src="/js/guards.js"></script>
+
+  <script type="module">
+  import { auth, db } from "/js/firebase-config-enterprise.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { doc, getDoc, collection, query, where, limit, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { showToast } from "/js/utils.js";
+
+    const userEmailEl = document.getElementById("userEmail");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const resultsEl = document.getElementById("results");
+    const emptyStateEl = document.getElementById("emptyState");
+    const infoMsgEl = document.getElementById("infoMsg");
+    const kwInput = document.getElementById("kwInput");
+    const ageMinInput = document.getElementById("ageMinInput");
+    const ageMaxInput = document.getElementById("ageMaxInput");
+    const distInput = document.getElementById("distInput");
+    const sortSelect = document.getElementById("sortSelect");
+    const applyFiltersBtn = document.getElementById("applyFiltersBtn");
+    const resultsCountEl = document.getElementById("resultsCount");
+    const vipEventsBanner = document.getElementById("vipEventsBanner");
+    const vipEventsBtn = document.getElementById("vipEventsBtn");
+
+    const isPreview = new URLSearchParams(location.search).has('ide_webview_request_time');
+
+    function normalizeGender(raw) {
+      const g = (raw || '').toLowerCase();
+      if (['male','m','hombre'].includes(g)) return 'male';
+      if (['female','f','mujer'].includes(g)) return 'female';
+      return null;
+    }
+
+    function renderCard(user, canMessage, partnerUid, canSchedule, depositRequired) {
+      const alias = user.alias || "Usuario";
+      const avatarUrl = user.avatarUrl || "https://via.placeholder.com/128x128.png?text=Avatar";
+      const city = user.city || "";
+      const bio = user.bio || "";
+      const gender = (user.gender || '').toLowerCase();
+      let badgeHtml = '';
+      if (gender === 'male') {
+        badgeHtml = canSchedule
+          ? '<span class="px-2 py-1 rounded-full text-xs bg-cyan-600/30 text-cyan-200 border border-cyan-400/40">Agendable</span>'
+          : '<span class="px-2 py-1 rounded-full text-xs bg-gray-600/30 text-gray-200 border border-gray-400/40">No agendable</span>';
+      } else if (gender === 'female') {
+        badgeHtml = canSchedule
+          ? '<span class="px-2 py-1 rounded-full text-xs bg-green-600/30 text-green-200 border border-green-400/40">Cita inmediata</span>'
+          : '<span class="px-2 py-1 rounded-full text-xs bg-yellow-600/30 text-yellow-200 border border-yellow-400/40">Cita futura</span>';
+      }
+      const el = document.createElement('div');
+      el.className = 'glass card rounded-2xl p-5 flex items-center gap-4';
+      el.innerHTML = `
+        <img class="avatar" src="${avatarUrl}" alt="Avatar" />
+        <div class="flex-1">
+          <div class="text-lg font-bold flex items-center gap-2">${alias} ${badgeHtml}</div>
+          <div class="text-sm text-gray-300">${city}</div>
+          <div class="text-xs text-gray-400 mt-1">${bio}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="glass px-3 py-2 rounded-lg font-semibold">Ver perfil</button>
+          <button class="btn-primary px-3 py-2 rounded-lg font-semibold ${canMessage ? '' : 'opacity-60 cursor-not-allowed'}" ${canMessage ? '' : 'disabled'}>Iniciar conversación</button>
+          <button class="btn-secondary px-3 py-2 rounded-lg font-semibold ${canSchedule ? '' : 'opacity-60 cursor-not-allowed'}" ${canSchedule ? '' : 'disabled'}>Agendar cita</button>
+        </div>
+      `;
+      const btns = el.querySelectorAll('button');
+      const startBtn = btns[1];
+      const scheduleBtn = btns[2];
+      if (!canMessage) {
+        startBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          showToast('Necesitas membresía activa para conversar', 'warning');
+          setTimeout(() => { location.href = '/#pricing'; }, 600);
+        });
+      } else {
+        startBtn.addEventListener('click', () => {
+          showToast('Conversación: próximamente', 'info');
+        });
+      }
+      if (!canSchedule) {
+        scheduleBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const amount = typeof depositRequired === 'number' ? depositRequired : 120;
+          showToast(`Necesitas depositar ${amount} € para agendar`, 'warning');
+          setTimeout(() => { location.href = '/#pricing'; }, 600);
+        });
+      } else {
+        scheduleBtn.addEventListener('click', () => {
+          location.href = `/cita.html?to=${partnerUid}`;
+        });
+      }
+      return el;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        if (!isPreview) {
+          location.href = "/";
+        } else {
+          showToast('Sesión requerida: redirección desactivada en preview', 'info');
+        }
+        return;
+      }
+
+      userEmailEl.textContent = user.email || "";
+
+      try {
+        const meSnap = await getDoc(doc(db, "users", user.uid));
+        const me = meSnap.exists() ? meSnap.data() : {};
+        const myGender = normalizeGender(me.gender);
+
+        let targetGender = null;
+        if (myGender === "male") targetGender = "female";
+        else if (myGender === "female") targetGender = "male";
+        else {
+      infoMsgEl.innerHTML = "Solo se permite búsqueda heterosexual. Debes definir tu género durante el registro (no se cambia en el perfil).";
+          infoMsgEl.classList.remove('hidden');
+          return;
+        }
+
+        // Obtener política de membresía
+        let policy = { require: { male: true, female: false } };
+        try {
+          const r = await fetch('/api/membership-policy');
+          policy = await r.json().catch(() => policy);
+        } catch {}
+        const requiresMembership = (myGender === 'male' && policy.require.male) || (myGender === 'female' && policy.require.female);
+        const hasMembership = !!me.membershipActive; // se considera activo si el campo es true
+        const canMessage = requiresMembership ? !!hasMembership : true;
+        const membershipNotice = document.getElementById('membershipNotice');
+        if (!canMessage) {
+          membershipNotice.textContent = 'Tu membresía no está activa. No puedes abrir ni contestar conversaciones.';
+          membershipNotice.classList.remove('hidden');
+        }
+
+        // Política de depósito para permitir agendar
+        let depositRequired = 120;
+        try {
+          const rDep = await fetch('/api/deposit-policy');
+          const dep = await rDep.json();
+          if (typeof dep.requiredAmount === 'number') depositRequired = dep.requiredAmount;
+        } catch {}
+        const hasDeposit = (typeof me.depositAmount === 'number' && me.depositAmount >= depositRequired) || me.depositPaid === true;
+        const canSchedule = !!hasDeposit;
+
+        async function runSearch() {
+          // Elegir orden
+          const sortVal = (sortSelect?.value) || 'lastLogin_desc';
+          let baseQuery = query(collection(db, "users"), where("gender", "==", targetGender));
+          if (sortVal === 'lastLogin_desc') {
+            baseQuery = query(baseQuery, orderBy('lastLogin', 'desc'), limit(100));
+          } else {
+            baseQuery = query(baseQuery, orderBy('createdAt', 'desc'), limit(100));
+          }
+          let qsnap;
+          try {
+            qsnap = await getDocs(baseQuery);
+          } catch (err) {
+            console.error('Query error', err);
+            if (err && err.code === 'permission-denied') {
+      infoMsgEl.textContent = 'No tienes permiso para ver estos perfiles. Revisa tu género en tu registro.';
+              infoMsgEl.classList.remove('hidden');
+            }
+            showToast('No se pudieron cargar resultados', 'error');
+            return;
+          }
+          const all = [];
+          qsnap.forEach(docSnap => {
+            if (docSnap.id === user.uid) return;
+            all.push({ id: docSnap.id, data: docSnap.data() });
+          });
+
+          // Utilidades de filtros
+          function calcAge(u) {
+            if (typeof u.age === 'number') return u.age;
+            if (typeof u.birthYear === 'number') {
+              const year = new Date().getFullYear();
+              const a = year - u.birthYear;
+              return a >= 0 && a <= 120 ? a : null;
+            }
+            return null;
+          }
+          function haversineKm(a, b) {
+            if (!a || !b || typeof a.lat !== 'number' || typeof a.lng !== 'number' || typeof b.lat !== 'number' || typeof b.lng !== 'number') return null;
+            const R = 6371;
+            const dLat = (b.lat - a.lat) * Math.PI/180;
+            const dLon = (b.lng - a.lng) * Math.PI/180;
+            const lat1 = a.lat * Math.PI/180;
+            const lat2 = b.lat * Math.PI/180;
+            const aa = Math.sin(dLat/2)**2 + Math.sin(dLon/2)**2 * Math.cos(lat1) * Math.cos(lat2);
+            const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1-aa));
+            return R * c;
+          }
+
+          const kw = kwInput?.value?.trim().toLowerCase() || '';
+          const ageMin = Number(ageMinInput?.value) || null;
+          const ageMax = Number(ageMaxInput?.value) || null;
+          const distKm = Number(distInput?.value) || null;
+          const myPoint = me.meetingPoint || me.location || null;
+
+          const filtered = all.filter(({ id, data }) => {
+            if (kw) {
+              const blob = `${data.alias || ''} ${data.city || ''} ${data.bio || ''}`.toLowerCase();
+              if (!blob.includes(kw)) return false;
+            }
+            const age = calcAge(data);
+            if (ageMin && (age == null || age < ageMin)) return false;
+            if (ageMax && (age == null || age > ageMax)) return false;
+            if (distKm && myPoint) {
+              const dist = haversineKm(myPoint, data.meetingPoint || data.location || null);
+              if (dist == null || dist > distKm) return false;
+            }
+            return true;
+          });
+
+          // Renderizado
+          resultsEl.innerHTML = '';
+          let count = 0;
+          filtered.forEach(({ id, data }) => {
+            resultsEl.appendChild(renderCard(data, canMessage, id, canSchedule, depositRequired));
+            count++;
+          });
+          resultsCountEl.textContent = `${count} resultados`;
+          if (count === 0) emptyStateEl.classList.remove('hidden');
+          else emptyStateEl.classList.add('hidden');
+        }
+
+        await runSearch();
+
+        applyFiltersBtn?.addEventListener('click', async () => {
+          await runSearch();
+        });
+      } catch (e) {
+        console.error("Error cargando resultados", e);
+        if (e && e.code === 'permission-denied') {
+      infoMsgEl.textContent = 'Acceso denegado por reglas de seguridad. Verifica tu género (se define en el registro) o inicia sesión nuevamente.';
+          infoMsgEl.classList.remove('hidden');
+        }
+        showToast('No se pudieron cargar resultados', 'error');
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      try { await signOut(auth); location.href = '/'; }
+      catch (e) { console.error(e); showToast('No se pudo cerrar sesión', 'error'); }
+    });
+  </script>
+</body>
+</html>
+        // Mostrar CTA de Eventos VIP solo si eres mujer
+        try {
+          if (myGender === 'female') {
+            vipEventsBanner.classList.remove('hidden');
+          } else {
+            vipEventsBanner.classList.add('hidden');
+          }
+        } catch {}

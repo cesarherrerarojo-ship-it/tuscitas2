@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Admin - TuCitaSegura</title>
+  <meta name="theme-color" content="#0F172A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+ <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: { colors: { brand:'#0F172A', accent:'#0ea5e9', blue:{300:'#7dd3fc',400:'#38bdf8',500:'#0ea5e9',700:'#0369a1'} }, fontFamily:{ inter:['Inter','system-ui','sans-serif'] } } } }
+  </script>
+  <style>
+    body { font-family:'Inter',system-ui,sans-serif; background: linear-gradient(135deg,#0F172A 0%, #1e3a8a 100%);} 
+    .glass { background: rgba(255,255,255,0.08); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12);} 
+    .gradient-text { background: linear-gradient(135deg,#7dd3fc,#0ea5e9,#38bdf8); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  </style>
+</head>
+<body class="text-white min-h-screen">
+  <header class="w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16" role="navigation">
+      <a href="/index.html" class="flex items-center gap-3">
+        <i class="fa-solid fa-heart-circle-check text-blue-400 text-2xl"></i>
+        <span class="font-black text-xl text-blue-300">TuCitaSegura</span>
+      </a>
+      <div class="hidden md:flex items-center gap-6">
+        <a href="/admin/reportes.html" class="hover:text-blue-400">Reportes</a>
+        <a href="/admin/pagos.html" class="hover:text-blue-400">Pagos</a>
+        <a href="/admin/membresias.html" class="hover:text-blue-400">Membresías</a>
+        <a href="/admin/seguridad.html" class="hover:text-blue-400">Seguridad</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="pt-24 pb-12">
+    <div class="max-w-6xl mx-auto px-4">
+      <div class="text-center mb-10">
+        <h1 class="text-4xl md:text-5xl font-black gradient-text">Panel de Administración</h1>
+        <p class="text-blue-200 mt-2">Visión general y accesos rápidos.</p>
+      </div>
+
+      <section class="grid md:grid-cols-4 gap-6">
+        <div class="glass rounded-xl p-6">
+          <h3 class="font-bold">Usuarios</h3>
+          <p id="count-users" class="text-4xl mt-2">—</p>
+        </div>
+        <div class="glass rounded-xl p-6">
+          <h3 class="font-bold">Reportes</h3>
+          <p id="count-reports" class="text-4xl mt-2">—</p>
+        </div>
+        <div class="glass rounded-xl p-6">
+          <h3 class="font-bold">Alertas SOS</h3>
+          <p id="count-sos" class="text-4xl mt-2">—</p>
+        </div>
+        <div class="glass rounded-xl p-6">
+          <h3 class="font-bold">Membresías</h3>
+          <p id="count-subs" class="text-4xl mt-2">—</p>
+        </div>
+      </section>
+
+      <section class="glass rounded-xl p-6 mt-8">
+        <div class="flex items-center justify-between">
+          <h2 class="font-bold text-xl">Últimos reportes</h2>
+          <a href="/admin/reportes.html" class="text-blue-300 underline">Ver todos</a>
+        </div>
+        <div id="recent-reports" class="mt-4 text-blue-200">
+          <p class="italic">Cargando...</p>
+        </div>
+      </section>
+
+      <!-- Validación de perfiles -->
+      <section class="glass rounded-xl p-6 mt-8">
+        <div class="flex items-center justify-between">
+          <h2 class="font-bold text-xl">Perfiles pendientes de validación</h2>
+        </div>
+        <div id="pending-validations" class="mt-4 text-blue-200">
+          <p class="italic">Cargando...</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module">
+    import { ensureAdmin } from "/js/admin-guard.js";
+  import { auth, db } from "/js/firebase-config-enterprise.js";
+    import { collection, getDocs, query, orderBy, limit, where, doc, setDoc, addDoc, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    function setText(id, value){ const el = document.getElementById(id); if(el) el.textContent = value; }
+
+    function fmtDate(ts){ try{ return new Intl.DateTimeFormat('es-ES',{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(ts?.toDate?.()||new Date()); }catch{ return '—'; } }
+
+    ensureAdmin().then(async () => {
+      try {
+        const usersSnap = await getDocs(collection(db,'users'));
+        setText('count-users', usersSnap.size);
+
+        const reportsSnap = await getDocs(collection(db,'reports'));
+        setText('count-reports', reportsSnap.size);
+
+        const sosSnap = await getDocs(collection(db,'sos_alerts'));
+        setText('count-sos', sosSnap.size);
+
+        // Membresías: contamos usuarios con subscriptionStatus == 'active' (simple)
+        let subs = 0;
+        usersSnap.forEach(d => { const u = d.data(); if ((u.subscriptionStatus||'').toLowerCase() === 'active') subs++; });
+        setText('count-subs', subs);
+
+        // Últimos reportes
+        const recentBox = document.getElementById('recent-reports');
+        try {
+          const q = query(collection(db,'reports'), orderBy('createdAt','desc'), limit(5));
+          const snap = await getDocs(q);
+          if (snap.empty){ recentBox.innerHTML = '<p class="italic">Sin reportes.</p>'; }
+          else {
+            const rows = [];
+            snap.forEach(docu => { const r = docu.data(); rows.push(`<div class=\"flex justify-between py-2 border-b border-white/10\">
+              <span>${r.type || '—'}</span>
+              <span class=\"truncate\">${(r.reason||'—')}</span>
+              <span>${fmtDate(r.createdAt)}</span>
+            </div>`); });
+            recentBox.innerHTML = rows.join('');
+          }
+        } catch(e){ console.error(e); recentBox.innerHTML = '<p class="text-red-300">No se pudieron cargar reportes.</p>'; }
+
+        // Perfiles pendientes de validación
+        const pendingBox = document.getElementById('pending-validations');
+        try {
+          const qPending = query(collection(db,'users'), where('profileComplete','==', true), where('profileValidated','==', false));
+          const snapPending = await getDocs(qPending);
+          if (snapPending.empty) {
+            pendingBox.innerHTML = '<p class="italic">Sin pendientes.</p>';
+          } else {
+            const rows = [];
+            snapPending.forEach(d => {
+              const u = d.data();
+              const alias = u.alias || '—';
+              const email = u.email || '—';
+              rows.push(`<div class=\"flex items-center justify-between py-2 border-b border-white/10\">
+                <div>
+                  <div class=\"font-semibold\">${alias}</div>
+                  <div class=\"text-xs text-blue-300\">${email}</div>
+                </div>
+                <button class=\"px-3 py-1 rounded bg-green-600/30 hover:bg-green-600/40\" data-validate=\"${d.id}\">Validar</button>
+              </div>`);
+            });
+            pendingBox.innerHTML = rows.join('');
+            pendingBox.querySelectorAll('[data-validate]').forEach(btn => {
+              btn.addEventListener('click', async () => {
+                const uid = btn.getAttribute('data-validate');
+                try {
+                  await setDoc(doc(db,'users', uid), { profileValidated: true, validatedAt: serverTimestamp(), validatedBy: auth.currentUser?.uid || 'admin' }, { merge: true });
+                  // Canal preferido del usuario (email por defecto)
+                  let channels = ['email'];
+                  try {
+                    const us = await getDoc(doc(db,'users', uid));
+                    const prefs = us.exists() ? us.data()?.notifyChannels : null;
+                    if (Array.isArray(prefs) && prefs.length) channels = prefs;
+                  } catch {}
+                  await addDoc(collection(db,'notifications'), {
+                    userId: uid,
+                    type: 'profile_validated',
+                    title: 'Perfil validado',
+                    message: 'Tu perfil ha sido validado. Ya puedes usar todas las funciones.',
+                    channels,
+                    createdAt: serverTimestamp(),
+                    read: false
+                  });
+                  btn.textContent = 'Validado';
+                  btn.disabled = true;
+                } catch(e) {
+                  console.error('Validación fallida', e);
+                  alert('No se pudo validar el perfil');
+                }
+              });
+            });
+          }
+        } catch(e) { console.error(e); pendingBox.innerHTML = '<p class="text-red-300">No se pudieron cargar pendientes.</p>'; }
+      } catch(e){ console.error('Dashboard admin error', e); }
+    });
+  </script>
+</body>
+</html>

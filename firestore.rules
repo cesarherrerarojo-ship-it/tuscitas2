@@ -1,0 +1,225 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      // Requiere custom claim 'role' == 'admin'. Puede ajustarse más adelante.
+      return isSignedIn() && request.auth.token.role == 'admin';
+    }
+
+    function isConcierge() {
+      return isSignedIn() && request.auth.token.role == 'concierge';
+    }
+
+    // Obtener el perfil del usuario autenticado
+    function viewerGender() {
+      return isSignedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.gender
+        : null;
+    }
+
+    // Verifica si el usuario autenticado tiene género distinto al del perfil objetivo
+    function hasOppositeGender(targetGender) {
+      return isSignedIn() &&
+        viewerGender() is string && targetGender is string &&
+        viewerGender() != targetGender;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Lectura: dueño o admin
+      // Nota: evitar referenciar resource.data cuando el documento no existe; separa condiciones.
+      allow read: if isOwner(userId) || isAdmin();
+      // Lectura para usuarios autenticados de sexo opuesto (solo si el doc existe y tiene gender)
+      allow read: if resource != null && resource.data.gender is string && hasOppositeGender(resource.data.gender);
+      // Crear: dueño y debe proporcionar alias y género válidos (quedan fijos)
+      allow create: if isOwner(userId) &&
+        request.resource.data.keys().hasAll(['alias','gender']) &&
+        request.resource.data.alias is string &&
+        request.resource.data.gender in ['male','female'];
+      // Actualización por el dueño: alias y género NO se pueden cambiar
+      // Incluye campos usados en perfil.html (excluye 'alias' y 'gender')
+      allow update: if isOwner(userId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'city', 'bio', 'avatarUrl', 'meetingPoint', 'backupPoint', 'updatedAt',
+          'profileComplete', 'notifyChannels', 'subscriptionPlan', 'subscriptionStatus', 'subscriptionNext',
+          'walletBalance',
+          // Campos de perfil adicionales
+          'occupation', 'relationshipStatus', 'lookingFor', 'originMunicipality', 'galleryUrls', 'paypalEmail'
+        ]);
+      // Actualizaciones de validación permitidas para admin; NO puede cambiar alias/género
+      allow update: if isAdmin() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'profileValidated', 'validatedAt', 'validatedBy'
+        ]);
+      allow delete: if false;
+    }
+
+    // Users_private collection: datos sensibles visibles solo para dueño y admin
+    match /users_private/{userId} {
+      // Lectura: dueño o admin
+      allow read: if isOwner(userId) || isAdmin();
+      // Crear: dueño
+      allow create: if isOwner(userId);
+      // Actualizar: dueño puede actualizar únicamente campos permitidos
+      allow update: if isOwner(userId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'phone', 'phoneVerified', 'updatedAt'
+        ]);
+      // Admin puede marcar verificado si fuera necesario
+      allow update: if isAdmin() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'phoneVerified'
+        ]);
+      allow delete: if false;
+    }
+
+    // Reports collection: creación por usuarios autenticados
+    match /reports/{reportId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.keys().hasOnly([
+          'type','reason','description','reporterId',
+          'reportedUserLabel','reportedUserId','reportedDateLabel','reportedDateId',
+          'createdAt','status'
+        ]) &&
+        request.resource.data.type in ['user','date'] &&
+        request.resource.data.reason is string &&
+        request.resource.data.description is string &&
+        request.resource.data.reporterId == request.auth.uid &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.status in ['pending','open','closed'];
+      // Lectura: sólo admin o el propio autor del reporte
+      allow read: if isAdmin() || (isSignedIn() && resource.data.reporterId == request.auth.uid);
+      allow update, delete: if false;
+    }
+
+    // SOS alerts: creación por usuarios autenticados
+    match /sos_alerts/{alertId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.keys().hasOnly(['userId','message','location','createdAt']) &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.message is string &&
+        request.resource.data.location is map &&
+        request.resource.data.location.lat is number &&
+        request.resource.data.location.lng is number &&
+        request.resource.data.createdAt == request.time;
+      // Lectura: sólo admin o el dueño
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow update, delete: if false;
+    }
+
+    // Wallet topups: dueño puede crear y leer, admin puede leer
+    match /wallet_topups/{topupId} {
+      allow create: if isSignedIn() &&
+        request.resource.data.keys().hasOnly(['userId','amount','status','createdAt']) &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.amount is number && request.resource.data.amount > 0 &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.createdAt == request.time;
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Notificaciones (avisos del sistema)
+    match /notifications/{notifId} {
+      // Crear: admin y concierge pueden crear ciertos tipos de notificaciones
+      allow create: if (
+          (isAdmin() && request.resource.data.type in ['profile_validated']) ||
+          (isConcierge() && request.resource.data.type in ['new_applicant','event_selected'])
+        ) &&
+        request.resource.data.keys().hasOnly(['userId','type','title','message','channels','createdAt','read']) &&
+        request.resource.data.userId is string &&
+        request.resource.data.createdAt == request.time &&
+        (request.resource.data.read == false || request.resource.data.read == null);
+      // Lectura: dueño, admin o concierge
+      allow read: if isAdmin() || isConcierge() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      // Actualización: dueño puede marcar como leído
+      allow update: if isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']) && resource.data.userId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // Eventos VIP publicados por Concierge
+    match /vip_events/{eventId} {
+      // Crear: sólo concierge puede crear eventos
+      allow create: if isConcierge() &&
+        request.resource.data.keys().hasOnly(['title','description','city','eventDate','venue','createdBy','status','createdAt','updatedAt','selectedApplicants']) &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.status in ['open','complete'] &&
+        request.resource.data.createdAt == request.time;
+      // Lectura: concierge y usuarias (género femenino) autenticadas
+      allow read: if isConcierge() || (isSignedIn() && viewerGender() == 'female');
+      // Actualizar: sólo concierge dueño puede actualizar estado y seleccionadas
+      allow update: if isConcierge() && resource.data.createdBy == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','selectedApplicants']) &&
+        request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // Aplicaciones a eventos VIP (por usuarias)
+    match /vip_event_applications/{appId} {
+      // Crear: usuaria autenticada (género femenino)
+      allow create: if isSignedIn() && viewerGender() == 'female' &&
+        request.resource.data.keys().hasOnly(['eventId','applicantId','motivation','createdAt','status']) &&
+        request.resource.data.applicantId == request.auth.uid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.createdAt == request.time;
+      // Lectura: dueña o concierge dueño del evento
+      allow read: if isOwner(resource.data.applicantId) || (
+        isConcierge() && get(/databases/$(database)/documents/vip_events/$(resource.data.eventId)).data.createdBy == request.auth.uid
+      );
+      // Actualizar: concierge dueño del evento puede decidir
+      allow update: if isConcierge() &&
+        get(/databases/$(database)/documents/vip_events/$(resource.data.eventId)).data.createdBy == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','decidedAt','decidedBy']) &&
+        request.resource.data.status in ['selected','rejected'] &&
+        request.resource.data.decidedAt == request.time &&
+        request.resource.data.decidedBy == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // Conversations: participantes, admin o concierge
+    match /conversations/{conversationId} {
+      // Ver conversación si eres participante, admin o concierge
+      allow read: if isSignedIn() && (
+        request.auth.uid in resource.data.participants || isAdmin() || isConcierge()
+      );
+
+      // Crear si el creador está en participants
+      allow create: if isSignedIn() &&
+        request.resource.data.participants is list &&
+        request.auth.uid in request.resource.data.participants;
+
+      // Actualizar si eres participante, admin o concierge
+      allow update: if isSignedIn() && (
+        request.auth.uid in resource.data.participants || isAdmin() || isConcierge()
+      );
+
+      // Borrar: admin
+      allow delete: if isAdmin();
+
+      // Mensajes como subcolección
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && (
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants
+          || isAdmin() || isConcierge()
+        );
+        allow create: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+        allow update, delete: if false;
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

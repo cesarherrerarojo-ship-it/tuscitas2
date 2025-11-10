@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin — Reportes</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 35%, #0369a1 100%); }
+    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
+  </style>
+</head>
+<body class="min-h-screen text-white">
+  <header class="fixed w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+      <div class="flex items-center gap-2"><span class="text-xl font-bold">Reportes</span></div>
+      <div class="flex items-center gap-3 text-sm">
+        <a href="/admin/seguridad.html" class="glass px-3 py-2 rounded">Seguridad</a>
+        <a href="/admin/pagos.html" class="glass px-3 py-2 rounded">Pagos</a>
+        <a href="/admin/membresias.html" class="glass px-3 py-2 rounded">Membresías</a>
+        <a href="/" class="glass px-3 py-2 rounded">Inicio</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 pt-24 pb-16">
+    <section class="glass rounded-2xl p-6">
+      <h1 class="text-2xl font-bold mb-3">Reportes de usuarios</h1>
+      <p class="text-sm text-blue-100 mb-4">Lista de reportes (si tu cuenta es admin y las reglas lo permiten).</p>
+      <div class="overflow-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left">
+              <th class="p-2">Fecha</th>
+              <th class="p-2">Reportante</th>
+              <th class="p-2">Reportado</th>
+              <th class="p-2">Motivo</th>
+              <th class="p-2">Notas</th>
+            </tr>
+          </thead>
+          <tbody id="reportsBody"></tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="hidden text-sm text-blue-100">Sin datos o falta de permisos.</div>
+    </section>
+  </main>
+
+  <script type="module">
+  import { db } from "/js/firebase-config-enterprise.js";
+    import { ensureAdmin } from "/js/admin-guard.js";
+    import { collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    const tbody = document.getElementById('reportsBody');
+    const emptyState = document.getElementById('emptyState');
+    try {
+      await ensureAdmin();
+      let qsnap;
+      try {
+        const q = query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(100));
+        qsnap = await getDocs(q);
+      } catch (e) {
+        // Fallback sin orderBy
+        const q = query(collection(db, 'reports'), limit(100));
+        qsnap = await getDocs(q);
+      }
+      if (qsnap.empty) { emptyState.classList.remove('hidden'); }
+      const rows = [];
+      qsnap.forEach(d => {
+        const r = d.data();
+        const fecha = r.createdAt?.toDate?.().toLocaleString?.() || '—';
+        rows.push(`<tr>
+          <td class="p-2">${fecha}</td>
+          <td class="p-2">${r.reporter || r.from || '—'}</td>
+          <td class="p-2">${r.reported || r.to || '—'}</td>
+          <td class="p-2">${r.reason || '—'}</td>
+          <td class="p-2">${r.notes || ''}</td>
+        </tr>`);
+      });
+      tbody.innerHTML = rows.join('');
+    } catch (e) {
+      console.error('Admin reportes', e);
+      emptyState.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cuenta y Pagos - TuCitaSegura</title>
+  <meta name="theme-color" content="#0F172A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+ <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: { colors: { brand:'#0F172A', accent:'#0ea5e9', blue:{300:'#7dd3fc',400:'#38bdf8',500:'#0ea5e9',700:'#0369a1'} }, fontFamily:{ inter:['Inter','system-ui','sans-serif'] } } } }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 100%);} 
+    .glass { background: rgba(255,255,255,0.08); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12);} 
+    .gradient-text { background: linear-gradient(135deg,#7dd3fc,#0ea5e9,#38bdf8); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .btn-primary { background: linear-gradient(135deg,#0ea5e9,#0369a1); box-shadow: 0 8px 24px rgba(14,165,233,0.2); transition: all .3s ease; }
+    .btn-primary:hover { transform: translateY(-2px); }
+  </style>
+</head>
+<body class="text-white min-h-screen">
+  <header class="w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16" role="navigation">
+      <a href="/index.html" class="flex items-center gap-3">
+        <i class="fa-solid fa-heart-circle-check text-blue-400 text-2xl"></i>
+        <span class="font-black text-xl text-blue-300">TuCitaSegura</span>
+      </a>
+      <div class="hidden md:flex items-center gap-6">
+        <a href="/buscar.html" class="hover:text-blue-400">Buscar</a>
+        <a href="/cita.html" class="hover:text-blue-400">Mis Citas</a>
+        <a href="/ayuda.html" class="hover:text-blue-400">Ayuda</a>
+        <div class="user-logged-in flex items-center gap-4">
+          <a href="/perfil.html" class="btn-primary px-6 py-2 rounded-full font-semibold">Mi Perfil</a>
+          <button id="logoutButton" class="glass px-6 py-2 rounded-full font-semibold hover:bg-white/20">Cerrar Sesión</button>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="pt-24 pb-12">
+    <div class="max-w-5xl mx-auto px-4">
+      <div class="text-center mb-10">
+        <h1 class="text-4xl md:text-5xl font-black gradient-text">Cuenta y Pagos</h1>
+        <p class="text-blue-200 mt-2">Gestiona tu suscripción y monedero.</p>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Suscripción -->
+        <section class="glass rounded-xl p-6">
+          <div class="flex items-center justify-between">
+            <h2 class="font-bold text-xl">Tu Suscripción</h2>
+            <i class="fa-solid fa-crown text-yellow-300"></i>
+          </div>
+          <div class="mt-4 space-y-2 text-blue-200">
+            <p>Plan: <span id="sub-plan" class="text-white">—</span></p>
+            <p>Estado: <span id="sub-status" class="text-white">—</span></p>
+            <p>Renovación: <span id="sub-next" class="text-white">—</span></p>
+          </div>
+          <div class="mt-6 flex gap-3">
+            <button id="btn-manage-sub" class="btn-primary px-4 py-2 rounded-lg">Gestionar suscripción</button>
+            <button id="btn-cancel-sub" class="glass px-4 py-2 rounded-lg hover:bg-white/20">Cancelar</button>
+          </div>
+        </section>
+
+        <!-- Monedero -->
+        <section class="glass rounded-xl p-6">
+          <div class="flex items-center justify-between">
+            <h2 class="font-bold text-xl">Tu Monedero</h2>
+            <i class="fa-solid fa-wallet text-blue-300"></i>
+          </div>
+          <div class="mt-4 space-y-2 text-blue-200">
+            <p>Saldo: <span id="wallet-balance" class="text-white">—</span></p>
+          </div>
+          <div class="mt-6 flex gap-3">
+            <button id="btn-topup" class="btn-primary px-4 py-2 rounded-lg">Agregar fondos</button>
+            <button id="btn-view-tx" class="glass px-4 py-2 rounded-lg hover:bg-white/20">Ver transacciones</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- Transacciones -->
+      <section class="glass rounded-xl p-6 mt-6">
+        <div class="flex items-center justify-between">
+          <h2 class="font-bold text-xl">Tus transacciones</h2>
+          <i class="fa-solid fa-list text-blue-300"></i>
+        </div>
+        <div id="tx-list" class="mt-4 text-blue-200">
+          <p class="italic">Sin transacciones registradas.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="mt-12 mb-6 text-center text-xs text-blue-200">
+    <p>TuCitaSegura — Cuenta y Pagos</p>
+  </footer>
+
+  <!-- Guardia de sesión/perfil -->
+  <script type="module" src="/js/guards.js"></script>
+
+  <script type="module">
+  import { auth, db } from "/js/firebase-config-enterprise.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { doc, getDoc, collection, addDoc, serverTimestamp, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    const userBar = document.querySelector('.user-logged-in');
+    const logoutBtn = document.getElementById('logoutButton');
+    logoutBtn?.addEventListener('click', async () => { try { await signOut(auth); location.href = '/'; } catch(e){ alert('No se pudo cerrar sesión'); } });
+
+    function fmtEUR(v){ try{ return new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(Number(v||0)); }catch{ return `${v}`; } }
+    function fmtDate(ts){ try{ return new Intl.DateTimeFormat('es-ES',{year:'numeric',month:'short',day:'2-digit'}).format(ts instanceof Date? ts : (ts?.toDate?.()||new Date(ts))); }catch{ return '—'; } }
+
+    async function loadTransactions(uid){
+      const box = document.getElementById('tx-list');
+      box.innerHTML = '<p class="italic">Cargando...</p>';
+      try {
+        const q = query(collection(db,'wallet_topups'), where('userId','==',uid), orderBy('createdAt','desc'), limit(10));
+        const snap = await getDocs(q);
+        if (snap.empty){ box.innerHTML = '<p class="italic">Sin transacciones registradas.</p>'; return; }
+        const rows = [];
+        snap.forEach(docu => {
+          const d = docu.data();
+          rows.push(`<div class="flex justify-between py-2 border-b border-white/10">
+            <span>${fmtDate(d.createdAt)}</span>
+            <span class="text-white">${fmtEUR(d.amount||0)}</span>
+            <span class="uppercase ${d.status==='pending'?'text-yellow-300':'text-green-300'}">${d.status||'—'}</span>
+          </div>`);
+        });
+        box.innerHTML = rows.join('');
+      } catch(e){ console.error(e); box.innerHTML = '<p class="text-red-300">No se pudieron cargar transacciones.</p>'; }
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user){ if(userBar) userBar.style.display='none'; return; }
+      if(userBar) userBar.style.display='flex';
+      try {
+        const snap = await getDoc(doc(db,'users', user.uid));
+        const u = snap.exists()? snap.data(): {};
+        document.getElementById('sub-plan').textContent = u.subscriptionPlan || '—';
+        document.getElementById('sub-status').textContent = u.subscriptionStatus || '—';
+        document.getElementById('sub-next').textContent = u.subscriptionNext ? fmtDate(u.subscriptionNext) : '—';
+        document.getElementById('wallet-balance').textContent = fmtEUR(u.walletBalance || 0);
+        loadTransactions(user.uid);
+
+        document.getElementById('btn-topup')?.addEventListener('click', async () => {
+          const v = prompt('¿Cuánto deseas agregar? (EUR)');
+          const amount = Number(v);
+          if (!amount || amount <= 0){ return; }
+          try {
+            await addDoc(collection(db,'wallet_topups'), {
+              userId: user.uid,
+              amount,
+              status: 'pending',
+              createdAt: serverTimestamp()
+            });
+            alert('Solicitud de recarga creada (pendiente).');
+            loadTransactions(user.uid);
+          } catch(e){ console.error(e); alert('No se pudo crear la recarga.'); }
+        });
+
+        document.getElementById('btn-view-tx')?.addEventListener('click', () => {
+          document.getElementById('tx-list')?.scrollIntoView({behavior:'smooth'});
+        });
+
+        document.getElementById('btn-manage-sub')?.addEventListener('click', () => {
+          alert('Próximamente: gestión de suscripción.');
+        });
+        document.getElementById('btn-cancel-sub')?.addEventListener('click', () => {
+          alert('Próximamente: cancelación de suscripción.');
+        });
+      } catch(e){ console.error('Carga de cuenta/pagos', e); }
+    });
+  </script>
+</body>
+</html>

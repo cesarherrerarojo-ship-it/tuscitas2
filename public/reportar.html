@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Reporta un problema con un usuario o una cita en TuCitaSegura.">
+  <title>Crear Reporte - TuCitaSegura</title>
+  <link rel="canonical" href="https://tucitasegura.com/reportes">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#0F172A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+ <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: '#0F172A',
+            accent: '#0ea5e9',
+            danger: '#ef4444',
+            blue: { 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 700: '#0369a1' }
+          },
+          fontFamily: { inter: ['Inter', 'system-ui', 'sans-serif'] },
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 100%); }
+    .glass { background: rgba(255,255,255,0.08); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
+    .gradient-text { background: linear-gradient(135deg, #f87171, #ef4444, #b91c1c); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .btn-danger { background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 8px 24px rgba(239, 68, 68, 0.2); transition:all 0.3s ease; }
+    .btn-danger:hover { transform: translateY(-2px); }
+    .form-label { font-weight: 600; margin-bottom: 0.5rem; display: block; }
+    .form-select, .form-textarea { width: 100%; padding: 0.75rem 1rem; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; font-size: 1rem; transition: border-color 0.2s; background: rgba(255,255,255,0.05); color:white; }
+    .form-select:focus, .form-textarea:focus { outline: none; border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2); }
+    .form-select { appearance: none; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23f87171' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; }
+    .form-select option { background-color: #0F172A; }
+  </style>
+</head>
+<body class="text-white min-h-screen">
+  <header class="w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16" role="navigation">
+      <a href="/" class="flex items-center gap-3">
+        <i class="fa-solid fa-heart-circle-check text-blue-400 text-2xl"></i>
+        <span class="font-black text-xl text-blue-300">TuCitaSegura</span>
+      </a>
+    </nav>
+  </header>
+
+  <main class="pt-24 pb-12">
+    <div class="max-w-2xl mx-auto px-4">
+      <div class="text-center mb-8">
+        <a href="/perfil.html" class="text-blue-300 hover:text-white mb-4 inline-block"><i class="fa-solid fa-arrow-left mr-2"></i>Volver</a>
+        <h1 class="text-4xl md:text-5xl font-black gradient-text">Crear Reporte</h1>
+        <p class="text-red-200 mt-2">Lamentamos que hayas tenido un problema. Por favor, danos los detalles.</p>
+      </div>
+
+      <div class="glass rounded-2xl p-6 md:p-8">
+        <form id="report-form" class="space-y-6">
+          <div>
+            <label for="report-type" class="form-label">¿Sobre qué es el reporte?</label>
+            <select id="report-type" class="form-select" required>
+              <option value="">Selecciona una opción...</option>
+              <option value="user">Sobre un Usuario</option>
+              <option value="date">Sobre una Cita</option>
+            </select>
+          </div>
+
+          <div id="user-report-section" class="hidden space-y-6">
+            <div>
+              <label for="report-user" class="form-label">Usuario a reportar</label>
+              <input id="report-user" class="form-select" placeholder="Nombre/alias del usuario" />
+              <div class="text-xs text-blue-200 mt-2">Si conoces el UID, puedes pegarlo aquí:</div>
+              <input id="report-user-uid" class="form-select" placeholder="UID del usuario (opcional)" />
+            </div>
+          </div>
+
+          <div id="date-report-section" class="hidden space-y-6">
+            <div>
+              <label for="report-date" class="form-label">Cita a reportar</label>
+              <input id="report-date" class="form-select" placeholder="Descripción breve de la cita (fecha, lugar, persona)" />
+              <div class="text-xs text-blue-200 mt-2">Si conoces el ID de la cita, puedes pegarlo aquí:</div>
+              <input id="report-date-id" class="form-select" placeholder="ID de la cita (opcional)" />
+            </div>
+          </div>
+
+          <div>
+            <label for="report-reason" class="form-label">Motivo del reporte</label>
+            <select id="report-reason" class="form-select" required>
+              <option value="">Selecciona motivo…</option>
+              <option>Comportamiento inapropiado</option>
+              <option>Perfil falso / Suplantación de identidad</option>
+              <option>Inasistencia a la cita (Default)</option>
+              <option>Problema grave durante la cita</option>
+              <option>Spam o estafa</option>
+              <option>Otro motivo</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="report-description" class="form-label">Descripción del problema</label>
+            <textarea id="report-description" rows="5" class="form-textarea" placeholder="Explica detalladamente qué ha ocurrido. Aporta toda la información posible." required></textarea>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button type="submit" class="btn-danger text-white font-bold px-5 py-3 rounded">Enviar reporte</button>
+            <span id="submitStatus" class="text-sm text-blue-200"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+  </main>
+
+  <script type="module">
+    import "/js/guards.js"; // Enforce auth + perfil completo
+  import { auth, db } from "/js/firebase-config-enterprise.js";
+    import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { showToast } from "/js/utils.js";
+
+    const typeSelect = document.getElementById('report-type');
+    const userSection = document.getElementById('user-report-section');
+    const dateSection = document.getElementById('date-report-section');
+    const form = document.getElementById('report-form');
+    const statusEl = document.getElementById('submitStatus');
+
+    typeSelect.addEventListener('change', () => {
+      const v = typeSelect.value;
+      userSection.classList.toggle('hidden', v !== 'user');
+      dateSection.classList.toggle('hidden', v !== 'date');
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusEl.textContent = '';
+      const user = auth.currentUser;
+      if (!user) { showToast('Debes iniciar sesión'); return; }
+
+      const type = typeSelect.value;
+      const reason = document.getElementById('report-reason').value;
+      const description = document.getElementById('report-description').value.trim();
+
+      if (!type) { showToast('Selecciona el tipo de reporte'); return; }
+      if (!reason) { showToast('Selecciona el motivo'); return; }
+      if (!description) { showToast('Describe el problema'); return; }
+
+      const reportedUserLabel = document.getElementById('report-user')?.value || '';
+      const reportedUserUid = document.getElementById('report-user-uid')?.value || '';
+      const reportedDateLabel = document.getElementById('report-date')?.value || '';
+      const reportedDateId = document.getElementById('report-date-id')?.value || '';
+
+      const payload = {
+        type,
+        reason,
+        description,
+        reporterId: user.uid,
+        reportedUserLabel: type === 'user' ? reportedUserLabel : null,
+        reportedUserId: type === 'user' ? (reportedUserUid || null) : null,
+        reportedDateLabel: type === 'date' ? reportedDateLabel : null,
+        reportedDateId: type === 'date' ? (reportedDateId || null) : null,
+        createdAt: serverTimestamp(),
+        status: 'open'
+      };
+
+      try {
+        const ref = await addDoc(collection(db, 'reports'), payload);
+        showToast('Reporte creado correctamente');
+        statusEl.textContent = `ID: ${ref.id}`;
+        setTimeout(() => { location.href = '/perfil.html'; }, 1200);
+      } catch (err) {
+        console.error('Error creando reporte', err);
+        showToast('No fue posible crear el reporte. Verifica permisos.');
+        statusEl.textContent = 'Error de permisos o conexión';
+      }
+    });
+  </script>
+</body>
+</html>

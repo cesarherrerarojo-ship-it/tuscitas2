@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin — Seguridad</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 35%, #0369a1 100%); }
+    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
+  </style>
+</head>
+<body class="min-h-screen text-white">
+  <header class="fixed w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+      <div class="flex items-center gap-2"><span class="text-xl font-bold">Seguridad</span></div>
+      <div class="flex items-center gap-3 text-sm">
+        <a href="/admin/reportes.html" class="glass px-3 py-2 rounded">Reportes</a>
+        <a href="/admin/pagos.html" class="glass px-3 py-2 rounded">Pagos</a>
+        <a href="/admin/membresias.html" class="glass px-3 py-2 rounded">Membresías</a>
+        <a href="/" class="glass px-3 py-2 rounded">Inicio</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 pt-24 pb-16">
+    <section class="glass rounded-2xl p-6">
+      <h1 class="text-2xl font-bold mb-3">Alertas SOS</h1>
+      <p class="text-sm text-blue-100 mb-4">Listado de alertas de seguridad (SOS) recientes.</p>
+      <div class="overflow-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left">
+              <th class="p-2">Fecha</th>
+              <th class="p-2">Usuario</th>
+              <th class="p-2">Ubicación</th>
+              <th class="p-2">Mensaje</th>
+            </tr>
+          </thead>
+          <tbody id="sosBody"></tbody>
+        </table>
+      </div>
+      <div id="emptySos" class="hidden text-sm text-blue-100">Sin datos o falta de permisos.</div>
+    </section>
+
+    <section class="glass rounded-2xl p-6 mt-8">
+      <h2 class="text-xl font-bold mb-3">Consulta de móvil (solo admin)</h2>
+      <p class="text-sm text-blue-100 mb-4">Busca el móvil de un usuario por UID o por email. Solo visible para administradores.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div>
+          <label class="block mb-1 text-blue-100">Email</label>
+          <input id="lookupEmail" type="email" class="input bg-white/10 text-white border border-white/20 w-full" placeholder="usuario@correo.com" />
+        </div>
+        <div>
+          <button id="btnByEmail" class="glass px-4 py-2 rounded w-full">Buscar por email</button>
+        </div>
+        <div>
+          <label class="block mb-1 text-blue-100">UID</label>
+          <input id="lookupUid" type="text" class="input bg-white/10 text-white border border-white/20 w-full" placeholder="UID del usuario" />
+        </div>
+      </div>
+      <div class="flex gap-3 mt-3">
+        <button id="btnByUid" class="glass px-4 py-2 rounded">Buscar por UID</button>
+        <span id="lookupStatus" class="text-sm text-blue-200">—</span>
+      </div>
+      <div id="phoneResult" class="mt-3 text-sm"></div>
+    </section>
+  </main>
+
+  <script type="module">
+  import { auth, db } from "/js/firebase-config-enterprise.js";
+    import { ensureAdmin } from "/js/admin-guard.js";
+    import { collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    const tbody = document.getElementById('sosBody');
+    const emptyEl = document.getElementById('emptySos');
+    try {
+      await ensureAdmin();
+      let qsnap;
+      try {
+        const q = query(collection(db, 'sos_alerts'), orderBy('createdAt', 'desc'), limit(100));
+        qsnap = await getDocs(q);
+      } catch (e) {
+        const q = query(collection(db, 'sos_alerts'), limit(100));
+        qsnap = await getDocs(q);
+      }
+      if (qsnap.empty) { emptyEl.classList.remove('hidden'); }
+      const rows = [];
+      qsnap.forEach(d => {
+        const r = d.data();
+        const fecha = r.createdAt?.toDate?.().toLocaleString?.() || '—';
+        const loc = r.location ? `${r.location.lat?.toFixed?.(4)}, ${r.location.lng?.toFixed?.(4)}` : '—';
+        rows.push(`<tr>
+          <td class="p-2">${fecha}</td>
+          <td class="p-2">${r.user || r.uid || '—'}</td>
+          <td class="p-2">${loc}</td>
+          <td class="p-2">${r.message || ''}</td>
+        </tr>`);
+      });
+      tbody.innerHTML = rows.join('');
+    } catch (e) {
+      console.error('Admin seguridad', e);
+      emptyEl.classList.remove('hidden');
+    }
+
+    // ===== Consulta de móvil (admin-only) =====
+    const emailInput = document.getElementById('lookupEmail');
+    const uidInput = document.getElementById('lookupUid');
+    const btnByEmail = document.getElementById('btnByEmail');
+    const btnByUid = document.getElementById('btnByUid');
+    const statusEl = document.getElementById('lookupStatus');
+    const phoneResult = document.getElementById('phoneResult');
+
+    async function getAdminToken() {
+      try { return await auth.currentUser.getIdToken(); } catch { return null; }
+    }
+    async function fetchUidByEmail(email) {
+      const token = await getAdminToken();
+      if (!token) throw new Error('Sin token');
+      const r = await fetch(`/api/admin/uid-by-email?email=${encodeURIComponent(email)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return await r.json();
+    }
+    async function fetchPhoneByUid(uid) {
+      const token = await getAdminToken();
+      if (!token) throw new Error('Sin token');
+      const r = await fetch(`/api/admin/user-phone?uid=${encodeURIComponent(uid)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return await r.json();
+    }
+    function renderPhone(data) {
+      if (!data?.ok) {
+        statusEl.textContent = `❌ ${data?.error || 'error'}`;
+        phoneResult.textContent = '';
+        return;
+      }
+      statusEl.textContent = '✅ Datos obtenidos';
+      const phone = data.phone || '—';
+      const verified = data.phoneVerified ? 'Sí' : 'No';
+      phoneResult.innerHTML = `<div class="glass p-3 rounded"><div><b>UID:</b> ${data.uid}</div><div><b>Teléfono:</b> ${phone}</div><div><b>Verificado:</b> ${verified}</div></div>`;
+    }
+    btnByEmail?.addEventListener('click', async () => {
+      statusEl.textContent = '⏳ Buscando UID por email...';
+      phoneResult.textContent = '';
+      try {
+        const email = (emailInput.value || '').trim();
+        if (!email) { statusEl.textContent = '❌ Email requerido'; return; }
+        const uidResp = await fetchUidByEmail(email);
+        if (!uidResp.ok) { renderPhone(uidResp); return; }
+        uidInput.value = uidResp.uid;
+        statusEl.textContent = '⏳ Consultando móvil por UID...';
+        const phoneResp = await fetchPhoneByUid(uidResp.uid);
+        renderPhone(phoneResp);
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = '❌ Error en la consulta';
+      }
+    });
+    btnByUid?.addEventListener('click', async () => {
+      statusEl.textContent = '⏳ Consultando móvil por UID...';
+      phoneResult.textContent = '';
+      try {
+        const uid = (uidInput.value || '').trim();
+        if (!uid) { statusEl.textContent = '❌ UID requerido'; return; }
+        const phoneResp = await fetchPhoneByUid(uid);
+        renderPhone(phoneResp);
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = '❌ Error en la consulta';
+      }
+    });
+  </script>
+</body>
+</html>

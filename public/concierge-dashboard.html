@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Concierge — Dashboard</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 35%, #0369a1 100%); }
+    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
+  </style>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#0F172A" />
+ <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous" />
+  <script type="module">
+  import { auth, db } from "/js/firebase-config-enterprise.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { doc, getDoc, addDoc, collection, serverTimestamp, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { showToast } from "/js/utils.js";
+
+    const form = document.getElementById('eventForm');
+    const listEl = document.getElementById('eventsList');
+    const emptyEl = document.getElementById('emptyState');
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { location.href = '/'; return; }
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        const profile = snap.exists() ? snap.data() : {};
+        if (profile.role !== 'concierge') {
+          showToast('Acceso restringido a Concierges verificados');
+          location.href = '/';
+          return;
+        }
+
+        // Listar eventos propios
+        try {
+          let qsnap;
+          try {
+            const q = query(collection(db, 'vip_events'), where('createdBy', '==', user.uid), orderBy('createdAt','desc'));
+            qsnap = await getDocs(q);
+          } catch {
+            const q = query(collection(db, 'vip_events'), where('createdBy', '==', user.uid));
+            qsnap = await getDocs(q);
+          }
+          if (qsnap.empty) emptyEl.classList.remove('hidden');
+          const rows = [];
+          qsnap.forEach(d => {
+            const e = d.data();
+            const fecha = e.eventDate || '—';
+            rows.push(`<li class="glass p-4 rounded flex items-center justify-between">
+              <div>
+                <div class="font-bold">${e.title || 'Sin título'}</div>
+                <div class="text-blue-200 text-sm">${e.city || '—'} · ${fecha}</div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm">${e.status || 'open'}</span>
+                <a class="btn-primary px-3 py-2 rounded" href="/evento-detalle.html?eventId=${d.id}">Ver detalles</a>
+              </div>
+            </li>`);
+          });
+          listEl.innerHTML = rows.join('');
+        } catch (e) {
+          console.error(e);
+          emptyEl.classList.remove('hidden');
+        }
+
+        // Envío del formulario
+        form.addEventListener('submit', async (ev) => {
+          ev.preventDefault();
+          const title = document.getElementById('title').value.trim();
+          const description = document.getElementById('description').value.trim();
+          const city = document.getElementById('city').value.trim();
+          const eventDate = document.getElementById('eventDate').value.trim();
+          const venue = document.getElementById('venue').value.trim();
+          if (!title || !description || !city || !eventDate) { showToast('Completa los campos requeridos'); return; }
+          try {
+            await addDoc(collection(db, 'vip_events'), {
+              title, description, city, eventDate, venue,
+              createdBy: user.uid,
+              status: 'open',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+              selectedApplicants: []
+            });
+            showToast('Evento VIP publicado');
+            setTimeout(() => location.reload(), 800);
+          } catch (e) {
+            console.error(e); showToast('No se pudo publicar el evento');
+          }
+        });
+      } catch (e) {
+        console.error('Concierge dashboard error', e);
+        location.href = '/';
+      }
+    });
+  </script>
+</head>
+<body class="min-h-screen text-white">
+  <header class="fixed w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+      <div class="flex items-center gap-2"><span class="text-xl font-bold">Concierge Dashboard</span></div>
+      <div class="flex items-center gap-3 text-sm">
+        <a href="/eventos-vip.html" class="glass px-3 py-2 rounded">Eventos VIP</a>
+        <a href="/" class="glass px-3 py-2 rounded">Inicio</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 pt-24 pb-16">
+    <section class="glass rounded-2xl p-6 mb-6">
+      <h1 class="text-2xl font-bold mb-3">Crear Nuevo Evento VIP</h1>
+      <form id="eventForm" class="space-y-4">
+        <div>
+          <label class="text-sm text-blue-100">Título</label>
+          <input id="title" class="glass px-3 py-2 rounded w-full" placeholder="Ej: Selección cena VIP en Madrid" />
+        </div>
+        <div>
+          <label class="text-sm text-blue-100">Ciudad</label>
+          <input id="city" class="glass px-3 py-2 rounded w-full" placeholder="Madrid" />
+        </div>
+        <div>
+          <label class="text-sm text-blue-100">Fecha / Hora</label>
+          <input id="eventDate" class="glass px-3 py-2 rounded w-full" placeholder="2025-11-20 21:00" />
+        </div>
+        <div>
+          <label class="text-sm text-blue-100">Lugar</label>
+          <input id="venue" class="glass px-3 py-2 rounded w-full" placeholder="Zona Santiago Bernabéu" />
+        </div>
+        <div>
+          <label class="text-sm text-blue-100">Descripción</label>
+          <textarea id="description" rows="4" class="glass px-3 py-2 rounded w-full" placeholder="Detalles del evento, requisitos, compensación, dress code..."></textarea>
+        </div>
+        <button type="submit" class="btn-primary px-5 py-3 rounded">Publicar Evento</button>
+      </form>
+    </section>
+
+    <section class="glass rounded-2xl p-6">
+      <h2 class="text-xl font-bold mb-3">Mis Eventos</h2>
+      <ul id="eventsList" class="space-y-3"></ul>
+      <div id="emptyState" class="hidden text-sm text-blue-100">Aún no has publicado eventos.</div>
+    </section>
+    <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+  </main>
+  <script type="module" src="/js/guards.js"></script>
+</body>
+</html>

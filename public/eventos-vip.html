@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Eventos VIP</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 35%, #0369a1 100%); }
+    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
+  </style>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#0F172A" />
+ <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous" />
+</head>
+<body class="min-h-screen text-white">
+  <header class="fixed w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+      <div class="flex items-center gap-2"><span class="text-xl font-bold">Eventos VIP</span></div>
+      <div class="flex items-center gap-3 text-sm">
+        <a href="/buscar.html" class="glass px-3 py-2 rounded">Buscar</a>
+        <a href="/" class="glass px-3 py-2 rounded">Inicio</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 pt-24 pb-16">
+    <section class="glass rounded-2xl p-6">
+      <p class="text-sm text-blue-100 mb-4">Eventos publicados por Concierges. Solo visible para usuarias verificadas.</p>
+      <ul id="eventsList" class="space-y-3"></ul>
+      <div id="emptyState" class="hidden text-sm text-blue-100">No hay eventos abiertos.</div>
+    </section>
+    <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+  </main>
+
+  <script type="module">
+    import "/js/guards.js";
+  import { auth, db } from "/js/firebase-config-enterprise.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { collection, query, where, orderBy, getDocs, addDoc, serverTimestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { showToast } from "/js/utils.js";
+
+    const listEl = document.getElementById('eventsList');
+    const emptyEl = document.getElementById('emptyState');
+
+    function itemTemplate(id, e) {
+      return `<li class="glass p-4 rounded">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="font-bold">${e.title || 'Sin título'}</div>
+            <div class="text-blue-200 text-sm">${e.city || '—'} · ${e.eventDate || '—'}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <a class="glass px-3 py-2 rounded" href="/evento-detalle.html?eventId=${id}">Ver</a>
+            <button class="btn-primary px-3 py-2 rounded" data-action="apply" data-id="${id}">Aplicar</button>
+          </div>
+        </div>
+        <div class="text-blue-100 text-sm mt-2">${e.description || ''}</div>
+      </li>`;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { showToast('Inicia sesión para ver eventos'); return; }
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        const profile = snap.exists() ? snap.data() : {};
+        const g = String(profile.gender || '').toLowerCase();
+        if (g !== 'female') {
+          showToast('Eventos VIP visibles solo para usuarias');
+          return;
+        }
+
+        let qsnap;
+        try {
+          const q = query(collection(db, 'vip_events'), where('status','==','open'), orderBy('createdAt','desc'));
+          qsnap = await getDocs(q);
+        } catch {
+          const q = query(collection(db, 'vip_events'), where('status','==','open'));
+          qsnap = await getDocs(q);
+        }
+        if (qsnap.empty) emptyEl.classList.remove('hidden');
+        const items = [];
+        qsnap.forEach(d => items.push(itemTemplate(d.id, d.data())));
+        listEl.innerHTML = items.join('');
+
+        listEl.addEventListener('click', async (e) => {
+          const t = e.target;
+          if (!(t instanceof HTMLElement)) return;
+          const action = t.getAttribute('data-action');
+          const id = t.getAttribute('data-id');
+          if (action === 'apply' && id) {
+            const motivation = prompt('Cuéntanos por qué te interesa este evento');
+            try {
+              await addDoc(collection(db, 'vip_event_applications'), {
+                eventId: id,
+                applicantId: user.uid,
+                motivation: String(motivation || '').slice(0, 500),
+                status: 'pending',
+                createdAt: serverTimestamp()
+              });
+              showToast('Aplicación enviada');
+            } catch (err) {
+              console.error(err);
+              showToast('No se pudo enviar la aplicación');
+            }
+          }
+        });
+      } catch (e) {
+        console.error('Eventos VIP error', e);
+        showToast('No se pudieron cargar eventos');
+      }
+    });
+  </script>
+  <script type="module" src="/js/guards.js"></script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Centro de seguridad y herramientas para reportar problemas en TuCitaSegura.">
+  <title>Seguridad - TuCitaSegura</title>
+  <link rel="canonical" href="https://tucitasegura.com/seguridad">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#0F172A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+ <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: '#0F172A',
+            accent: '#0ea5e9',
+            success: '#10b981',
+            warning: '#f59e0b',
+            danger: '#ef4444',
+            blue: { 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 700: '#0369a1' }
+          },
+          fontFamily: { inter: ['Inter', 'system-ui', 'sans-serif'] },
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 100%); }
+    .glass { background: rgba(255,255,255,0.08); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
+    .gradient-text { background: linear-gradient(135deg, #7dd3fc, #0ea5e9, #38bdf8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .btn-primary { background: linear-gradient(135deg, #0ea5e9, #0369a1); box-shadow: 0 8px 24px rgba(14,165,233,0.2); transition:all 0.3s ease; }
+    .btn-primary:hover { transform: translateY(-2px); }
+    .btn-danger { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+    .btn-danger:hover { transform: translateY(-2px); }
+  </style>
+</head>
+<body class="text-white min-h-screen">
+  <header class="w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16" role="navigation">
+      <a href="/" class="flex items-center gap-3">
+        <i class="fa-solid fa-heart-circle-check text-blue-400 text-2xl"></i>
+        <span class="font-black text-xl gradient-text">TuCitaSegura</span>
+      </a>
+      <div class="hidden md:flex items-center gap-6">
+        <a href="/buscar.html" class="hover:text-blue-400">Buscar</a>
+        <a href="/cita.html" class="hover:text-blue-400">Mis Citas</a>
+        <div class="user-logged-in flex items-center gap-4">
+          <a href="/perfil.html" class="btn-primary px-6 py-2 rounded-full font-semibold">Mi Perfil</a>
+          <button id="logoutButton" class="glass px-6 py-2 rounded-full font-semibold hover:bg-white/20">Cerrar Sesión</button>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="pt-24 pb-12">
+    <div class="max-w-4xl mx-auto px-4">
+      <div class="text-center mb-12">
+        <h1 class="text-4xl md:text-5xl font-black gradient-text">Centro de Seguridad</h1>
+        <p class="text-blue-200 mt-2 text-lg">Tu tranquilidad es nuestra prioridad. Aquí tienes las herramientas para gestionar tu seguridad.</p>
+      </div>
+
+      <!-- Herramientas de Seguridad -->
+      <div class="glass rounded-2xl p-6 md:p-8">
+        <h2 class="text-2xl font-bold mb-6 gradient-text">Herramientas</h2>
+        <div class="space-y-6">
+          <!-- Botón de Pánico (SOS) - Solo visible para chicas -->
+          <div id="sos-section" class="bg-red-900/50 border-2 border-danger/50 rounded-lg p-6 sm:flex items-center gap-6 hidden">
+            <div class="text-6xl text-red-400 flex-shrink-0 animate-pulse">
+              <i class="fa-solid fa-bell"></i>
+            </div>
+            <div class="flex-1 text-center sm:text-left">
+              <h3 class="text-xl font-bold text-red-200">Botón de Pánico SOS</h3>
+              <p class="text-red-200 mt-1">Úsalo solo en una emergencia real. Al activarlo, alertaremos a nuestro equipo de seguridad, que se pondrá en contacto contigo. Si no respondes, nos pondremos en contacto con las autoridades.</p>
+            </div>
+            <button id="sos-button" class="btn-danger font-bold px-6 py-4 rounded-full flex-shrink-0 text-lg shadow-lg hover:bg-red-700 transition-colors animate-pulse">
+              <i class="fa-solid fa-bell mr-2"></i>ACTIVAR SOS
+            </button>
+          </div>
+
+          <!-- Reportar un Problema -->
+          <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6 sm:flex items-center gap-6">
+            <div class="text-4xl text-yellow-400 flex-shrink-0"><i class="fa-solid fa-flag"></i></div>
+            <div class="flex-1 text-center sm:text-left">
+              <h3 class="text-xl font-bold">Reportar un Problema</h3>
+              <p class="text-yellow-200 mt-1">Si una cita no ha ido bien o has tenido un problema con un usuario, infórmanos.</p>
+            </div>
+            <a href="/reportar.html" class="bg-yellow-600 font-bold px-6 py-3 rounded-full flex-shrink-0 hover:bg-yellow-500 transition-colors">
+              <i class="fa-solid fa-flag mr-2"></i>Crear Reporte
+            </a>
+          </div>
+
+          <!-- Gestionar Bloqueos -->
+          <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6 sm:flex items-center gap-6">
+            <div class="text-4xl text-blue-300 flex-shrink-0"><i class="fa-solid fa-user-slash"></i></div>
+            <div class="flex-1 text-center sm:text-left">
+              <h3 class="text-xl font-bold">Gestionar Usuarios Bloqueados</h3>
+              <p class="text-blue-200 mt-1">Revisa tus conversaciones y oculta o bloquea usuarios desde la lista.</p>
+            </div>
+            <a href="/conversaciones.html" class="btn-primary px-6 py-3 rounded-full flex-shrink-0">
+              <i class="fa-solid fa-comments mr-2"></i>Abrir Conversaciones
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+  </main>
+
+  <script type="module">
+    import "/js/guards.js"; // Enforce auth + perfil completo
+  import { auth, db } from "/js/firebase-config-enterprise.js";
+    import { doc, getDoc, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { showToast } from "/js/utils.js";
+
+    const sosSection = document.getElementById('sos-section');
+    const sosButton = document.getElementById('sos-button');
+    const logoutButton = document.getElementById('logoutButton');
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        const profile = snap.exists() ? snap.data() : {};
+        const isFemale = (profile.gender === 'female' || profile.gender === 'f' || profile.isGirl === true);
+        sosSection.classList.toggle('hidden', !isFemale);
+      } catch (e) {
+        console.warn('No se pudo cargar el perfil para SOS', e);
+      }
+    });
+
+    logoutButton?.addEventListener('click', async () => {
+      try { await signOut(auth); location.href = '/'; } catch (e) { showToast('No se pudo cerrar sesión'); }
+    });
+
+    async function getLocation() {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) { resolve(null); return; }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => resolve(null),
+          { enableHighAccuracy: true, timeout: 5000 }
+        );
+      });
+    }
+
+    sosButton?.addEventListener('click', async () => {
+      const user = auth.currentUser;
+      if (!user) { showToast('Debes iniciar sesión'); return; }
+      sosButton.disabled = true;
+      sosButton.classList.remove('animate-pulse');
+      try {
+        const location = await getLocation();
+        await addDoc(collection(db, 'sos_alerts'), {
+          userId: user.uid,
+          message: 'SOS activado desde Centro de Seguridad',
+          createdAt: serverTimestamp(),
+          location
+        });
+        showToast('SOS enviado. Nuestro equipo te contactará.');
+      } catch (e) {
+        console.error('Error al enviar SOS', e);
+        showToast('No se pudo enviar el SOS. Verifica permisos.');
+      } finally {
+        setTimeout(() => { sosButton.disabled = false; sosButton.classList.add('animate-pulse'); }, 1500);
+      }
+    });
+  </script>
+</body>
+</html>

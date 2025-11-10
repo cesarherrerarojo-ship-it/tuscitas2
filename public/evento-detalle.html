@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Evento VIP — Detalle</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 35%, #0369a1 100%); }
+    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
+  </style>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#0F172A" />
+ <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous" />
+</head>
+<body class="min-h-screen text-white">
+  <header class="fixed w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+      <div class="flex items-center gap-2"><span class="text-xl font-bold">Evento VIP</span></div>
+      <div class="flex items-center gap-3 text-sm">
+        <a href="/concierge-dashboard.html" class="glass px-3 py-2 rounded">Dashboard</a>
+        <a href="/eventos-vip.html" class="glass px-3 py-2 rounded">Eventos VIP</a>
+        <a href="/" class="glass px-3 py-2 rounded">Inicio</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 pt-24 pb-16">
+    <section class="glass rounded-2xl p-6 mb-6">
+      <h1 class="text-2xl font-bold mb-2" id="evTitle">Evento VIP</h1>
+      <div class="text-blue-200" id="evMeta"></div>
+      <p class="text-sm text-blue-100 mt-3" id="evDesc"></p>
+    </section>
+    <section class="glass rounded-2xl p-6">
+      <h2 class="text-xl font-bold mb-3">Aplicantes</h2>
+      <ul id="appsList" class="space-y-3"></ul>
+      <div id="emptyState" class="hidden text-sm text-blue-100">No hay aplicantes aún.</div>
+    </section>
+    <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+  </main>
+
+  <script type="module">
+  import { auth, db } from "/js/firebase-config-enterprise.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { doc, getDoc, collection, query, where, orderBy, getDocs, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { showToast } from "/js/utils.js";
+
+    const url = new URL(location.href);
+    const eventId = url.searchParams.get('eventId');
+    const evTitle = document.getElementById('evTitle');
+    const evMeta = document.getElementById('evMeta');
+    const evDesc = document.getElementById('evDesc');
+    const appsList = document.getElementById('appsList');
+    const emptyEl = document.getElementById('emptyState');
+
+    function appItemTemplate(appId, a) {
+      return `<li class="glass p-4 rounded flex items-center justify-between">
+        <div>
+          <div class="font-bold">${a.applicantId}</div>
+          <div class="text-blue-100 text-sm">${a.motivation || ''}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="btn-primary px-3 py-2 rounded" data-action="select" data-id="${appId}">Seleccionar</button>
+          <button class="glass px-3 py-2 rounded" data-action="reject" data-id="${appId}">Rechazar</button>
+        </div>
+      </li>`;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { location.href = '/'; return; }
+      if (!eventId) { showToast('Falta eventId'); return; }
+      try {
+        const evSnap = await getDoc(doc(db, 'vip_events', eventId));
+        if (!evSnap.exists()) { showToast('Evento no encontrado'); return; }
+        const ev = evSnap.data();
+        if (ev.createdBy !== user.uid) {
+          showToast('Acceso restringido al Concierge dueño');
+          location.href = '/';
+          return;
+        }
+        evTitle.textContent = ev.title || 'Evento VIP';
+        evMeta.textContent = `${ev.city || '—'} · ${ev.eventDate || '—'} · Estado: ${ev.status || 'open'}`;
+        evDesc.textContent = ev.description || '';
+
+        // Listar aplicantes
+        let qsnap;
+        try {
+          const q = query(collection(db, 'vip_event_applications'), where('eventId','==', eventId), orderBy('createdAt','desc'));
+          qsnap = await getDocs(q);
+        } catch {
+          const q = query(collection(db, 'vip_event_applications'), where('eventId','==', eventId));
+          qsnap = await getDocs(q);
+        }
+        if (qsnap.empty) emptyEl.classList.remove('hidden');
+        const items = [];
+        qsnap.forEach(d => items.push(appItemTemplate(d.id, d.data())));
+        appsList.innerHTML = items.join('');
+
+        appsList.addEventListener('click', async (e) => {
+          const t = e.target;
+          if (!(t instanceof HTMLElement)) return;
+          const action = t.getAttribute('data-action');
+          const id = t.getAttribute('data-id');
+          if (!action || !id) return;
+          try {
+            const status = action === 'select' ? 'selected' : 'rejected';
+            await updateDoc(doc(db, 'vip_event_applications', id), {
+              status,
+              decidedAt: serverTimestamp(),
+              decidedBy: user.uid
+            });
+            showToast(action === 'select' ? 'Candidata seleccionada' : 'Aplicación rechazada');
+            setTimeout(() => location.reload(), 500);
+          } catch (err) {
+            console.error(err); showToast('No se pudo actualizar la aplicación');
+          }
+        });
+      } catch (e) {
+        console.error('Evento detalle error', e);
+        showToast('No se pudo cargar el evento');
+      }
+    });
+  </script>
+  <script type="module" src="/js/guards.js"></script>
+</body>
+</html>

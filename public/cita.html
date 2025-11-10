@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agendar Cita — TuCitaSegura</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="min-h-screen bg-slate-900 text-white">
+  <header class="fixed top-0 left-0 right-0 bg-slate-900/80 backdrop-blur border-b border-white/10 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="/" class="font-black text-xl">TuCitaSegura</a>
+      <nav class="flex items-center gap-3">
+        <a href="/perfil.html" class="glass px-3 py-2 rounded-lg">Mi Perfil</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="pt-24 px-4 pb-12">
+    <section class="max-w-4xl mx-auto">
+      <h1 class="text-3xl font-black mb-2">Agendar Cita</h1>
+      <p class="text-gray-300 text-sm">Selecciona día (14 días a futuro), hora y lugar. Ambas partes deben aceptar. Máximo 3 propuestas antes de bloqueo mutuo de 30 días.</p>
+
+      <div id="blockNotice" class="text-sm text-red-300 mt-3 hidden"></div>
+      <div id="depositNotice" class="text-sm text-yellow-300 mt-3 hidden"></div>
+
+      <div class="glass rounded-2xl p-5 mt-4">
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="block mb-1">Selecciona día (próximos 14)</label>
+            <div id="calendar" class="grid grid-cols-7 gap-2"></div>
+          </div>
+          <div>
+            <label class="block mb-1">Selecciona hora</label>
+            <select id="timeSelect" class="input bg-white/10 text-white border border-white/20 w-full"></select>
+            <label class="block mt-4 mb-1">Lugar (texto)</label>
+            <input id="placeInput" type="text" class="input bg-white/10 text-white border border-white/20 w-full" placeholder="Ej: Cafetería Centro, Madrid" />
+          </div>
+        </div>
+        <div class="mt-4 flex items-center gap-3">
+          <button id="addProposalBtn" class="btn-primary px-4 py-2 rounded-lg font-semibold">Agregar propuesta</button>
+          <div id="proposalHint" class="text-xs text-gray-300">Máximo 3 propuestas</div>
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl p-5 mt-6">
+        <h2 class="text-xl font-bold mb-2">Propuestas</h2>
+        <div id="proposalsList" class="space-y-3"></div>
+      </div>
+
+      <div id="toast" class="toast" style="display:none"></div>
+    </section>
+  </main>
+
+  <script type="module">
+  import { auth, db } from '/js/firebase-config-enterprise.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js';
+    import { collection, doc, getDoc, setDoc, addDoc, updateDoc, query, where, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
+    import { showToast, formatDate } from '/js/utils.js';
+
+    const calendarEl = document.getElementById('calendar');
+    const timeSelect = document.getElementById('timeSelect');
+    const placeInput = document.getElementById('placeInput');
+    const addProposalBtn = document.getElementById('addProposalBtn');
+    const proposalsList = document.getElementById('proposalsList');
+    const blockNotice = document.getElementById('blockNotice');
+    const depositNotice = document.getElementById('depositNotice');
+
+    let selectedDateISO = null;
+    let appointmentDoc = null; // Firestore doc ref
+    let appointmentData = null; // cached data
+    let currentUser = null;
+    let partnerUid = new URLSearchParams(location.search).get('to');
+
+    function pairKey(a, b) {
+      return [a, b].sort().join('_');
+    }
+
+    function renderCalendar() {
+      calendarEl.innerHTML = '';
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      for (let i = 0; i < 14; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i + 1); // días a futuro, desde mañana
+        const btn = document.createElement('button');
+        btn.className = 'glass px-2 py-2 rounded-lg text-sm';
+        btn.textContent = new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: '2-digit', month: 'short' }).format(d);
+        btn.addEventListener('click', () => {
+          selectedDateISO = d.toISOString();
+          [...calendarEl.children].forEach(b => b.classList.remove('ring-2','ring-cyan-400'));
+          btn.classList.add('ring-2','ring-cyan-400');
+        });
+        calendarEl.appendChild(btn);
+      }
+    }
+
+    function renderTimes() {
+      const times = [];
+      for (let h = 9; h <= 21; h++) {
+        for (let m of [0, 30]) {
+          times.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+        }
+      }
+      timeSelect.innerHTML = '';
+      times.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        timeSelect.appendChild(opt);
+      });
+    }
+
+    async function checkDeposit(user, userData) {
+      try {
+        const r = await fetch('/api/deposit-policy');
+        const policy = await r.json();
+        const required = Number(policy?.requiredAmount) || 120;
+        const deposited = (typeof userData.depositAmount === 'number' && userData.depositAmount >= required) || userData.depositPaid === true;
+        if (!deposited) {
+          depositNotice.textContent = `Para agendar, necesitas depositar el seguro de ${required} €.`;
+          depositNotice.classList.remove('hidden');
+        }
+        return deposited;
+      } catch {
+        return true; // fail-open para no bloquear si endpoint cae
+      }
+    }
+
+    async function checkBlock(uidA, uidB) {
+      const key = pairKey(uidA, uidB);
+      const snap = await getDoc(doc(db, 'pairBlocks', key));
+      if (snap.exists()) {
+        const block = snap.data();
+        const until = block.until?.toDate?.() || new Date(block.until);
+        if (until && until > new Date()) {
+          blockNotice.textContent = `Bloqueo activo entre ambos hasta ${formatDate(until)}.`;
+          blockNotice.classList.remove('hidden');
+          addProposalBtn.disabled = true;
+          addProposalBtn.classList.add('opacity-60','cursor-not-allowed');
+          return true;
+        }
+      }
+      return false;
+    }
+
+    async function loadAppointment(uidA, uidB) {
+      const key = pairKey(uidA, uidB);
+      const qRef = query(collection(db, 'appointments'), where('pairKey','==', key));
+      const qs = await getDocs(qRef);
+      let docRef = null; let data = null;
+      qs.forEach(d => { if (!docRef) { docRef = d.ref; data = d.data(); } });
+      if (!docRef) {
+        const payload = { pairKey: key, initiatorUid: uidA, partnerUid: uidB, proposals: [], status: 'pending', acceptances: {}, createdAt: serverTimestamp() };
+        const created = await addDoc(collection(db, 'appointments'), payload);
+        docRef = created; data = payload;
+      }
+      appointmentDoc = docRef; appointmentData = data;
+      renderProposals();
+    }
+
+    function renderProposals() {
+      proposalsList.innerHTML = '';
+      const proposals = appointmentData?.proposals || [];
+      if (proposals.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'text-sm text-gray-300';
+        empty.textContent = 'Sin propuestas aún.';
+        proposalsList.appendChild(empty);
+        return;
+      }
+      proposals.forEach((p, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between glass rounded-xl p-3';
+        const dt = new Date(p.dateTime);
+        row.innerHTML = `
+          <div>
+            <div class="font-semibold">${formatDate(dt)}</div>
+            <div class="text-xs text-gray-300">${p.place || '—'}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-blue-200">${p.creatorUid === currentUser.uid ? 'Propuesta tuya' : 'Propuesta de la otra parte'}</span>
+            <button class="btn-primary px-3 py-2 rounded-lg" data-idx="${idx}">Aceptar</button>
+          </div>
+        `;
+        const btn = row.querySelector('button');
+        btn.addEventListener('click', () => acceptProposal(idx));
+        proposalsList.appendChild(row);
+      });
+
+      if (proposals.length >= 3 && appointmentData.status !== 'accepted') {
+        addProposalBtn.disabled = true;
+        addProposalBtn.classList.add('opacity-60','cursor-not-allowed');
+        const warn = document.createElement('div');
+        warn.className = 'text-sm text-yellow-300 mt-2';
+        warn.textContent = 'Se alcanzó el máximo de 3 propuestas. Si no se acepta, se activará un bloqueo mutuo de 30 días.';
+        proposalsList.appendChild(warn);
+      }
+    }
+
+    async function addProposal() {
+      try {
+        if (!selectedDateISO) { showToast('Selecciona un día en el calendario', 'warning'); return; }
+        const time = timeSelect.value;
+        const place = placeInput.value.trim();
+        if (!time) { showToast('Selecciona una hora', 'warning'); return; }
+        if (!place) { showToast('Especifica el lugar', 'warning'); return; }
+
+        const dt = new Date(selectedDateISO);
+        const [hh,mm] = time.split(':').map(Number);
+        dt.setHours(hh, mm, 0, 0);
+        const now = new Date();
+        if (dt <= now) { showToast('La cita debe ser a futuro', 'warning'); return; }
+
+        const proposals = appointmentData.proposals || [];
+        if (proposals.length >= 3) { showToast('Máximo 3 propuestas', 'warning'); return; }
+
+        proposals.push({ dateTime: dt.toISOString(), place, creatorUid: currentUser.uid });
+        await updateDoc(appointmentDoc, { proposals });
+        appointmentData.proposals = proposals;
+        renderProposals();
+
+        if (proposals.length >= 3) {
+          // Si no hay aceptación en breve, mostrar aviso y preparar bloqueo
+          showToast('Alcanzaste 3 propuestas. Se bloqueará si no hay aceptación.', 'info');
+        }
+      } catch (e) {
+        console.error(e); showToast('No se pudo agregar la propuesta', 'error');
+      }
+    }
+
+    async function acceptProposal(index) {
+      try {
+        const proposals = appointmentData.proposals || [];
+        if (!proposals[index]) return;
+        const acceptances = appointmentData.acceptances || {};
+        const keyMine = currentUser.uid;
+        acceptances[keyMine] = { accepted: true, index, at: new Date().toISOString() };
+        let status = 'pending';
+        const otherUid = partnerUid;
+        if (acceptances[otherUid]?.accepted && acceptances[otherUid].index === index) {
+          status = 'accepted';
+        }
+        await updateDoc(appointmentDoc, { acceptances, status, selectedIndex: index });
+        appointmentData.acceptances = acceptances; appointmentData.status = status; appointmentData.selectedIndex = index;
+        renderProposals();
+        if (status === 'accepted') {
+          showToast('Cita aceptada por ambas partes', 'success');
+          // Contar cita aceptada en reputación (HTTP endpoint)
+          try {
+            const token = await auth.currentUser.getIdToken();
+            await fetch('/api/reputation/count-accepted', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ appointmentId: appointmentDoc.id })
+            });
+          } catch (e) {
+            console.warn('No se pudo contar la cita aceptada', e);
+          }
+        } else {
+          showToast('Has aceptado la propuesta. Esperando a la otra parte.', 'info');
+        }
+      } catch (e) {
+        console.error(e); showToast('No se pudo aceptar la propuesta', 'error');
+      }
+    }
+
+    async function enforceBlockIfNeeded() {
+      const proposals = appointmentData.proposals || [];
+      if (appointmentData.status === 'accepted') return;
+      if (proposals.length < 3) return;
+      // Bloqueo mutuo por 30 días
+      const until = new Date();
+      until.setDate(until.getDate() + 30);
+      const key = pairKey(currentUser.uid, partnerUid);
+      await setDoc(doc(db, 'pairBlocks', key), { until: until.toISOString(), createdAt: serverTimestamp() }, { merge: true });
+      blockNotice.textContent = `Se activó bloqueo mutuo por 30 días hasta ${formatDate(until)}.`;
+      blockNotice.classList.remove('hidden');
+      addProposalBtn.disabled = true;
+      addProposalBtn.classList.add('opacity-60','cursor-not-allowed');
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      try {
+        if (!user) { location.href = '/'; return; }
+        currentUser = user;
+
+        // Si no se especifica partner, solicitarlo por correo
+        if (!partnerUid) {
+          const email = prompt('Introduce el email de la otra persona para agendar:');
+          if (!email) { showToast('Se requiere destinatario', 'error'); return; }
+          const qs = await getDocs(query(collection(db, 'users'), where('email','==', email)));
+          let partner = null; qs.forEach(d => { partner = { uid: d.id, ...d.data() }; });
+          if (!partner) { showToast('No se encontró usuaria/usuario', 'error'); return; }
+          partnerUid = partner.uid;
+          history.replaceState({}, '', `${location.pathname}?to=${partnerUid}`);
+        }
+
+        // Verificar bloqueo
+        const isBlocked = await checkBlock(currentUser.uid, partnerUid);
+        if (isBlocked) return;
+
+        // Verificar depósito
+        const meSnap = await getDoc(doc(db, 'users', currentUser.uid));
+        const me = meSnap.exists() ? meSnap.data() : {};
+        const hasDeposit = await checkDeposit(currentUser, me);
+        if (!hasDeposit) {
+          addProposalBtn.disabled = true;
+          addProposalBtn.classList.add('opacity-60','cursor-not-allowed');
+        }
+
+        renderCalendar();
+        renderTimes();
+        await loadAppointment(currentUser.uid, partnerUid);
+
+        addProposalBtn.addEventListener('click', async () => { await addProposal(); await enforceBlockIfNeeded(); });
+      } catch (e) {
+        console.error('Error en agendar', e);
+        showToast('No se pudo inicializar la agenda', 'error');
+      }
+    });
+  </script>
+
+  <script type="module" src="/js/guards.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,22 @@
+# Node & general
+node_modules/
+functions/node_modules/
+dist/
+build/
+coverage/
+.DS_Store
+.vscode/
+*.log
+*.tmp
+
+# Env & local configs
+.env
+functions/.env
+functions/.env*
+.firebase/
+backups/
+*.zip
+
+# OS files
+Thumbs.db
+Desktop.ini

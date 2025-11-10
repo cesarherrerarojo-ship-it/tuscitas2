@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Encuentra respuestas a tus preguntas sobre TuCitaSegura.">
+  <title>Ayuda y Soporte - TuCitaSegura</title>
+  <link rel="canonical" href="https://tucitasegura.com/ayuda">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#0F172A">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+ <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: '#0F172A',
+            accent: '#0ea5e9',
+            blue: { 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 700: '#0369a1' }
+          },
+          fontFamily: { inter: ['Inter', 'system-ui', 'sans-serif'] },
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 100%); }
+    .glass { background: rgba(255,255,255,0.08); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
+    .gradient-text { background: linear-gradient(135deg, #7dd3fc, #0ea5e9, #38bdf8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .btn-primary { background: linear-gradient(135deg, #0ea5e9, #0369a1); box-shadow: 0 8px 24px rgba(14,165,233,0.2); transition:all 0.3s ease; }
+    .btn-primary:hover { transform: translateY(-2px); }
+    .faq-item details[open] summary ~ * { animation: sweep .5s ease-in-out; }
+    @keyframes sweep { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .faq-item summary::-webkit-details-marker { display: none; }
+  </style>
+  <link rel="icon" href="/favicon.ico">
+  <meta name="color-scheme" content="dark">
+  <meta name="mobile-web-app-capable" content="yes">
+</head>
+<body class="text-white min-h-screen">
+
+  <header class="w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16" role="navigation">
+      <a href="/index.html" class="flex items-center gap-3">
+        <i class="fa-solid fa-heart-circle-check text-blue-400 text-2xl"></i>
+        <span class="font-black text-xl text-blue-300">TuCitaSegura</span>
+      </a>
+      <div class="hidden md:flex items-center gap-6">
+        <a href="/buscar.html" class="hover:text-blue-400">Buscar</a>
+        <a href="/cita.html" class="hover:text-blue-400">Mis Citas</a>
+        <div class="user-logged-in flex items-center gap-4">
+          <a href="/perfil.html" class="btn-primary px-6 py-2 rounded-full font-semibold">Mi Perfil</a>
+          <button id="logoutButton" class="glass px-6 py-2 rounded-full font-semibold hover:bg-white/20">Cerrar Sesión</button>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="pt-24 pb-12">
+    <div class="max-w-4xl mx-auto px-4">
+      <div class="text-center mb-12">
+        <h1 class="text-4xl md:text-5xl font-black gradient-text">Centro de Ayuda</h1>
+        <p class="text-blue-200 mt-2 text-lg">¿Tienes alguna duda? Encuentra aquí las respuestas.</p>
+        <div class="mt-6 max-w-xl mx-auto relative">
+          <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-blue-200"></i>
+          <label for="faq-search" class="sr-only">Buscar en preguntas frecuentes</label>
+          <input type="search" id="faq-search" class="w-full bg-white/5 border border-white/20 rounded-full py-3 pl-12 pr-4" placeholder="Busca por palabra clave (ej: depósito, pin...)">
+        </div>
+      </div>
+
+      <!-- FAQ List -->
+      <div id="faq-list" class="space-y-4">
+        <div class="faq-item glass rounded-lg">
+          <details>
+            <summary class="flex justify-between items-center p-6 cursor-pointer">
+              <span class="font-bold text-lg">¿Cómo funciona el depósito antiplantón de 120€?</span>
+              <i class="fa-solid fa-chevron-down transition-transform duration-300"></i>
+            </summary>
+            <div class="p-6 pt-0 text-blue-200">
+              <p>El depósito es una garantía de compromiso. Funciona así:</p>
+              <ul class="list-disc list-inside mt-2 space-y-1">
+                <li><strong>Pago único:</strong> Al proponer tu primera cita, abonas 120€ que quedan como depósito en la plataforma.</li>
+                <li><strong>Reembolso automático:</strong> Tras cada cita, cuando ambos validáis la asistencia con el sistema de PIN y geolocalización, el depósito se te devuelve íntegramente de forma automática.</li>
+                <li><strong>Seguridad para todos:</strong> Si un usuario no se presenta sin cancelar (hace "default"), su depósito se retiene como compensación y su reputación baja. Tu depósito, en cambio, se te devuelve.</li>
+              </ul>
+            </div>
+          </details>
+        </div>
+
+        <div class="faq-item glass rounded-lg">
+          <details>
+            <summary class="flex justify-between items-center p-6 cursor-pointer">
+              <span class="font-bold text-lg">¿Cómo se valida una cita para que me devuelvan el depósito?</span>
+              <i class="fa-solid fa-chevron-down transition-transform duration-300"></i>
+            </summary>
+            <div class="p-6 pt-0 text-blue-200">
+              <p>La validación es un proceso seguro en 3 pasos:</p>
+              <ul class="list-disc list-inside mt-2 space-y-1">
+                <li><strong>Ventana de tiempo y lugar:</strong> La opción para validar solo se activa desde 30 minutos antes hasta 30 minutos después de la hora de la cita, y solo si estás a menos de 250 metros del lugar acordado.</li>
+                <li><strong>Intercambio de PIN:</strong> Al terminar la cita, ambos compartís y confirmáis el PIN único de la cita desde la app. Este paso verifica la asistencia de ambas partes.</li>
+                <li><strong>Confirmación y reembolso:</strong> Una vez verificado el PIN y la ubicación, el sistema marca la cita como completada y el depósito se reembolsa automáticamente.</li>
+              </ul>
+            </div>
+          </details>
+        </div>
+
+        <div class="faq-item glass rounded-lg">
+          <details>
+            <summary class="flex justify-between items-center p-6 cursor-pointer">
+              <span class="font-bold text-lg">¿Qué pasa si quiero cancelar una cita?</span>
+              <i class="fa-solid fa-chevron-down transition-transform duration-300"></i>
+            </summary>
+            <div class="p-6 pt-0 text-blue-200">
+              <p>Puedes cancelar desde la sección <strong>Mis Citas</strong> con antelación suficiente.</p>
+              <ul class="list-disc list-inside mt-2 space-y-1">
+                <li>Si cancelas antes del límite indicado, tu depósito no se ve afectado.</li>
+                <li>Las cancelaciones tardías o la no asistencia pueden impactar tu reputación.</li>
+              </ul>
+            </div>
+          </details>
+        </div>
+
+        <div class="faq-item glass rounded-lg">
+          <details>
+            <summary class="flex justify-between items-center p-6 cursor-pointer">
+              <span class="font-bold text-lg">¿Dónde encuentro soporte si tengo un problema?</span>
+              <i class="fa-solid fa-chevron-down transition-transform duration-300"></i>
+            </summary>
+            <div class="p-6 pt-0 text-blue-200">
+              <p>Usa el botón <strong>Reportar</strong> o visita el <a href="/seguridad.html" class="text-blue-300 underline">Centro de Seguridad</a> para alertas SOS y reportes.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="mt-12 mb-6 text-center text-xs text-blue-200">
+    <p>TuCitaSegura — Centro de Ayuda</p>
+  </footer>
+
+  <script type="module">
+    // Toggle chevron icon on details open/close and simple FAQ search
+    const list = document.getElementById('faq-list');
+    const searchInput = document.getElementById('faq-search');
+    list?.querySelectorAll('details').forEach(d => {
+      d.addEventListener('toggle', () => {
+        const icon = d.querySelector('.fa-chevron-down');
+        if (icon) icon.style.transform = d.open ? 'rotate(180deg)' : 'rotate(0deg)';
+      });
+    });
+    function normalize(t) { return (t || '').toLowerCase(); }
+    function matches(item, q) {
+      const s = item.querySelector('summary')?.textContent || '';
+      const c = item.querySelector('div')?.textContent || '';
+      return normalize(s).includes(q) || normalize(c).includes(q);
+    }
+    searchInput?.addEventListener('input', (e) => {
+      const q = normalize(e.target.value);
+      list.querySelectorAll('.faq-item').forEach(item => {
+        item.classList.toggle('hidden', q && !matches(item, q));
+      });
+    });
+
+    // Session detection and logout wiring (without enforcing guard)
+  import { auth } from "/js/firebase-config-enterprise.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+    const userBar = document.querySelector('.user-logged-in');
+    const logoutBtn = document.getElementById('logoutButton');
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        if (userBar) userBar.style.display = 'none';
+      } else {
+        if (userBar) userBar.style.display = 'flex';
+      }
+    });
+
+    logoutBtn?.addEventListener('click', async () => {
+      try {
+        await signOut(auth);
+        location.href = '/';
+      } catch (e) {
+        console.error('Logout error', e);
+        alert('No se pudo cerrar sesión, intenta de nuevo.');
+      }
+    });
+  </script>
+
+  <!-- Guardia de sesión/perfil/teléfono -->
+  <script type="module" src="/js/guards.js"></script>
+
+</body>
+</html>

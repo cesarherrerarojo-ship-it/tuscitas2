@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat — TuCitaSegura</title>
+  <link rel="stylesheet" href="/styles.css" />
+ <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous" />
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 35%, #0369a1 100%); }
+    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
+    .badge { font-size: 11px; padding: 2px 6px; border-radius: 999px; }
+    #messages { max-height: 60vh; overflow:auto; }
+  </style>
+</head>
+<body class="min-h-screen text-white font-inter">
+  <header class="fixed w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-comment-dots text-blue-300 text-2xl"></i>
+        <span class="text-xl font-bold">Chat</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="/conversaciones.html" class="glass px-3 py-2 rounded">Conversaciones</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 pt-24 pb-16">
+    <section class="glass rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <div class="font-bold" id="otherAlias">—</div>
+          <div class="text-xs text-blue-100 flex gap-2"><span id="badges">—</span><span id="distance">— km</span></div>
+        </div>
+        <div class="flex gap-2">
+          <button id="blockBtn" class="glass px-3 py-2 rounded">Bloquear</button>
+          <button id="hideBtn" class="glass px-3 py-2 rounded">Ocultar</button>
+          <a id="agendaBtn" href="#" class="glass px-3 py-2 rounded">Abrir agenda</a>
+        </div>
+      </div>
+      <div id="blockedBanner" class="hidden text-sm text-red-300 mb-2">Has bloqueado a este usuario. No podrás enviar mensajes.</div>
+      <div id="messages" class="space-y-2 mb-4"></div>
+      <form id="sendForm" class="flex gap-2">
+        <input id="msgInput" class="input bg-white/10 text-white border border-white/20 flex-1" placeholder="Escribe un mensaje" />
+        <button class="btn-primary px-4 py-2 rounded" type="submit">Enviar</button>
+      </form>
+    </section>
+    <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+  </main>
+
+  <script type="module">
+  import { auth, db } from "/js/firebase-config-enterprise.js";
+    import {
+      doc, getDoc, setDoc, addDoc,
+      collection, query, where, getDocs, orderBy, onSnapshot,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { showToast } from "/js/utils.js";
+
+    const params = new URLSearchParams(location.search);
+    const convIdParam = params.get('cid');
+    const otherUidParam = params.get('uid');
+    const otherAliasEl = document.getElementById('otherAlias');
+    const badgesEl = document.getElementById('badges');
+    const distanceEl = document.getElementById('distance');
+    const blockedBanner = document.getElementById('blockedBanner');
+    const sendForm = document.getElementById('sendForm');
+    const msgInput = document.getElementById('msgInput');
+    const blockBtn = document.getElementById('blockBtn');
+    const hideBtn = document.getElementById('hideBtn');
+    const agendaBtn = document.getElementById('agendaBtn');
+    const messagesEl = document.getElementById('messages');
+    const membershipBanner = document.createElement('div');
+    membershipBanner.id = 'membershipBanner';
+    membershipBanner.className = 'hidden text-sm text-yellow-300 mb-2';
+    membershipBanner.textContent = 'Tu membresía no está activa. No puedes enviar ni responder mensajes.';
+    // Insertar aviso encima del listado de mensajes
+    const sectionEl = document.querySelector('section');
+    sectionEl?.insertBefore(membershipBanner, sectionEl.querySelector('#messages'));
+
+    function calcKm(a, b) {
+      if (!a || !b || a.lat == null || a.lng == null || b.lat == null || b.lng == null) return null;
+      const R = 6371;
+      const dLat = (b.lat - a.lat) * Math.PI/180;
+      const dLon = (b.lng - a.lng) * Math.PI/180;
+      const lat1 = a.lat * Math.PI/180;
+      const lat2 = b.lat * Math.PI/180;
+      const aa = Math.sin(dLat/2)**2 + Math.sin(dLon/2)**2 * Math.cos(lat1) * Math.cos(lat2);
+      const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1-aa));
+      return Math.round(R * c);
+    }
+    function repBadge(level) {
+      const map = { Oro: 'bg-yellow-500/30 text-yellow-200', Plata: 'bg-gray-400/30 text-gray-200', Bronce: 'bg-amber-700/30 text-amber-200' };
+      const cls = map[level] || map['Bronce'];
+      return `<span class="badge ${cls}">${level}</span>`;
+    }
+    function availBadge(user) {
+      const required = 120;
+      const deposited = (typeof user.depositAmount === 'number' && user.depositAmount >= required) || user.depositPaid === true;
+      const cls = deposited ? 'bg-green-500/30 text-green-200' : 'bg-yellow-500/30 text-yellow-200';
+      const txt = deposited ? 'Disponible (verde)' : 'Futura (amarilla)';
+      return `<span class="badge ${cls}">${txt}</span>`;
+    }
+
+    async function ensureConversation(meUid, otherUid) {
+      if (convIdParam) return convIdParam;
+      if (!otherUid) throw new Error('Falta uid del otro usuario');
+      const q = query(collection(db, 'conversations'), where('participants', 'array-contains', meUid));
+      const qsnap = await getDocs(q);
+      let found = null;
+      qsnap.forEach(d => {
+        const data = d.data();
+        if (Array.isArray(data.participants) && data.participants.includes(otherUid)) found = d.id;
+      });
+      if (found) return found;
+      const ref = await addDoc(collection(db, 'conversations'), { participants: [meUid, otherUid], createdAt: serverTimestamp(), lastMessageAt: serverTimestamp() });
+      return ref.id;
+    }
+
+    function renderMessage(m, meUid) {
+      const mine = m.sender === meUid;
+      return `<div class="${mine ? 'text-right' : 'text-left'}">
+        <div class="inline-block glass px-3 py-2 rounded ${mine ? 'bg-blue-500/20' : ''}">${m.text || ''}</div>
+        <div class="text-[10px] text-blue-200">${(m.createdAt && m.createdAt.toDate ? m.createdAt.toDate().toLocaleString() : '')}</div>
+      </div>`;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { location.href = '/'; return; }
+      try {
+        const meSnap = await getDoc(doc(db, 'users', user.uid));
+        const me = meSnap.exists() ? { id: user.uid, ...meSnap.data() } : { id: user.uid };
+        // Política de membresía
+        let policy = { require: { male: true, female: false } };
+        try {
+          const r = await fetch('/api/membership-policy');
+          policy = await r.json().catch(() => policy);
+        } catch {}
+        const g = String(me.gender || '').toLowerCase();
+        const requiresMembership = (g === 'male' && policy.require.male) || (g === 'female' && policy.require.female);
+        const hasMembership = !!me.membershipActive;
+        const otherUid = otherUidParam;
+        const convId = await ensureConversation(user.uid, otherUid);
+        const convRef = doc(db, 'conversations', convId);
+        const convSnap = await getDoc(convRef);
+        const conv = convSnap.exists() ? convSnap.data() : { participants: [user.uid, otherUid] };
+        const counterpartId = conv.participants.find(p => p !== user.uid) || otherUid;
+        const otherSnap = await getDoc(doc(db, 'users', counterpartId));
+        const other = otherSnap.exists() ? { id: counterpartId, ...otherSnap.data() } : { id: counterpartId };
+        otherAliasEl.textContent = other.alias || other.email || 'Usuario';
+        badgesEl.innerHTML = other.gender === 'male' ? repBadge(other.level || 'Bronce') : availBadge(other);
+        const km = calcKm(me.meetingPoint || me.location, other.meetingPoint || other.location);
+        distanceEl.textContent = (km != null ? `${km} km` : '— km');
+        agendaBtn.href = `/cita.html?with=${counterpartId}`;
+
+        const isBlocked = Array.isArray(me.blocked) && me.blocked.includes(counterpartId);
+        blockedBanner.classList.toggle('hidden', !isBlocked);
+        sendForm.style.display = isBlocked ? 'none' : 'flex';
+
+        // Enforce membresía para envío de mensajes cuando la política lo requiera
+        if (requiresMembership && !hasMembership) {
+          membershipBanner.classList.remove('hidden');
+          sendForm.style.display = 'none';
+          showToast('Necesitas membresía activa para chatear', 'warning');
+          // Sugerir ir a precios
+          setTimeout(() => { try { location.href = '/#pricing'; } catch {} }, 800);
+        }
+
+        // Suscripción a mensajes
+        const msgsQ = query(collection(db, 'conversations', convId, 'messages'), orderBy('createdAt', 'asc'));
+        onSnapshot(msgsQ, (snap) => {
+          const html = [];
+          snap.forEach(d => html.push(renderMessage({ id: d.id, ...d.data() }, user.uid)));
+          messagesEl.innerHTML = html.join('');
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        });
+
+        sendForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const text = msgInput.value.trim();
+          if (!text) return;
+          // Bloqueo defensivo adicional
+          if (requiresMembership && !hasMembership) {
+            showToast('Tu membresía no está activa. No puedes enviar mensajes.', 'warning');
+            return;
+          }
+          try {
+            await addDoc(collection(db, 'conversations', convId, 'messages'), {
+              text,
+              sender: user.uid,
+              createdAt: serverTimestamp()
+            });
+            await setDoc(convRef, { lastMessageAt: serverTimestamp(), lastMessagePreview: text }, { merge: true });
+            msgInput.value = '';
+          } catch (e) {
+            console.error('No se pudo enviar', e);
+            showToast('No se pudo enviar el mensaje', 'error');
+          }
+        });
+
+        blockBtn.addEventListener('click', async () => {
+          try {
+            const blocked = Array.isArray(me.blocked) ? me.blocked : [];
+            blocked.push(counterpartId);
+            await setDoc(doc(db, 'users', user.uid), { blocked }, { merge: true });
+            showToast('Usuario bloqueado', 'success');
+            blockedBanner.classList.remove('hidden');
+            sendForm.style.display = 'none';
+          } catch (e) {
+            console.error(e); showToast('Error al bloquear', 'error');
+          }
+        });
+        hideBtn.addEventListener('click', async () => {
+          try {
+            const hidden = Array.isArray(me.hidden) ? me.hidden : [];
+            hidden.push(counterpartId);
+            await setDoc(doc(db, 'users', user.uid), { hidden }, { merge: true });
+            showToast('Conversación ocultada', 'info');
+          } catch (e) {
+            console.error(e); showToast('Error al ocultar', 'error');
+          }
+        });
+
+      } catch (e) {
+        console.error('Error iniciando chat', e);
+        showToast('No se pudo cargar el chat', 'error');
+      }
+    });
+  </script>
+  <script type="module" src="/js/guards.js"></script>
+</body>
+</html>

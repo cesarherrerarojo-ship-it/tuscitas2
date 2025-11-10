@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin — Membresías</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 35%, #0369a1 100%); }
+    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
+  </style>
+</head>
+<body class="min-h-screen text-white">
+  <header class="fixed w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+      <div class="flex items-center gap-2"><span class="text-xl font-bold">Membresías</span></div>
+      <div class="flex items-center gap-3 text-sm">
+        <a href="/admin/reportes.html" class="glass px-3 py-2 rounded">Reportes</a>
+        <a href="/admin/seguridad.html" class="glass px-3 py-2 rounded">Seguridad</a>
+        <a href="/admin/pagos.html" class="glass px-3 py-2 rounded">Pagos</a>
+        <a href="/" class="glass px-3 py-2 rounded">Inicio</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 pt-24 pb-16">
+    <section class="glass rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold">Estado de membresía</h1>
+        <div class="flex gap-2">
+          <select id="filterSelect" class="input bg-white/10 text-white border border-white/20">
+            <option value="all">Todas</option>
+            <option value="active">Activas</option>
+            <option value="inactive">Inactivas</option>
+          </select>
+          <button id="reloadBtn" class="btn-primary px-4 py-2 rounded">Recargar</button>
+        </div>
+      </div>
+      <div class="overflow-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left">
+              <th class="p-2">Usuario</th>
+              <th class="p-2">Membresía</th>
+              <th class="p-2">Depositado</th>
+              <th class="p-2">Cantidad</th>
+              <th class="p-2">Actualizado</th>
+            </tr>
+          </thead>
+          <tbody id="membersBody"></tbody>
+        </table>
+      </div>
+      <div id="membersEmpty" class="hidden text-sm text-blue-100">Sin datos o falta de permisos.</div>
+    </section>
+  </main>
+
+  <script type="module">
+  import { db } from "/js/firebase-config-enterprise.js";
+    import { ensureAdmin } from "/js/admin-guard.js";
+    import { collection, query, limit, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    const filterSelect = document.getElementById('filterSelect');
+    const reloadBtn = document.getElementById('reloadBtn');
+    const bodyEl = document.getElementById('membersBody');
+    const emptyEl = document.getElementById('membersEmpty');
+
+    async function load() {
+      bodyEl.innerHTML = '';
+      emptyEl.classList.add('hidden');
+      try {
+        await ensureAdmin();
+        let qsnap;
+        try {
+          const q = query(collection(db, 'users'), orderBy('updatedAt', 'desc'), limit(100));
+          qsnap = await getDocs(q);
+        } catch (e) {
+          const q = query(collection(db, 'users'), limit(100));
+          qsnap = await getDocs(q);
+        }
+        const rows = [];
+        const filter = filterSelect.value;
+        qsnap.forEach(d => {
+          const u = d.data();
+          const active = !!u.membershipActive;
+          if (filter === 'active' && !active) return;
+          if (filter === 'inactive' && active) return;
+          const depPaid = u.depositPaid === true || (typeof u.depositAmount === 'number' && u.depositAmount > 0);
+          rows.push(`<tr>
+            <td class="p-2">${u.alias || u.email || d.id}</td>
+            <td class="p-2">${active ? 'Activa' : 'Inactiva'}</td>
+            <td class="p-2">${depPaid ? 'Sí' : 'No'}</td>
+            <td class="p-2">${typeof u.depositAmount === 'number' ? (u.depositAmount + ' €') : '—'}</td>
+            <td class="p-2">${u.updatedAt?.toDate?.().toLocaleString?.() || '—'}</td>
+          </tr>`);
+        });
+        if (rows.length === 0) emptyEl.classList.remove('hidden');
+        bodyEl.innerHTML = rows.join('');
+      } catch (e) {
+        console.error('Admin membresías', e);
+        emptyEl.classList.remove('hidden');
+      }
+    }
+
+    reloadBtn.addEventListener('click', load);
+    filterSelect.addEventListener('change', load);
+    load();
+  </script>
+</body>
+</html>

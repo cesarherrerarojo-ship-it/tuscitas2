@@ -1,0 +1,884 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <
+  
+  
+  
+  
+  meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Editar y gestionar tu perfil en TuCitaSegura." />
+  <title>Mi Perfil — TuCitaSegura</title>
+  
+  <!-- SEO & Social Media -->
+  <meta property="og:title" content="TuCitaSegura - Citas Seguras sin Plantones" />
+  <meta property="og:description" content="Plataforma de citas segura con verificación avanzada, suscripción mensual y sistema antidefault." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://tucitasegura.com/og-image.png" />
+  <meta property="og:url" content="https://tucitasegura.com" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="TuCitaSegura" />
+  <meta name="twitter:description" content="Citas seguras con sistema antidefault" />
+  <meta name="theme-color" content="#0F172A" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="TuCitaSegura" />
+
+  <!-- Performance hints / Fuentes / Íconos -->
+  <link rel="dns-prefetch" href="https://www.gstatic.com" />
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+ <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous" />
+
+  <!-- CSS del proyecto -->
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="canonical" href="https://tucitasegura.com/perfil" />
+  <meta name="robots" content="noindex,nofollow" />
+
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 35%, #0369a1 100%); overflow-x: hidden; }
+    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
+    .gradient-text { background: linear-gradient(135deg, #7dd3fc, #0ea5e9, #38bdf8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .btn-primary { background: linear-gradient(135deg, #0ea5e9, #0369a1); box-shadow: 0 8px 24px rgba(14,165,233,0.2); transition: all 0.3s ease; }
+    .btn-primary:hover { background: linear-gradient(135deg, #0284c7, #075985); box-shadow: 0 12px 40px rgba(14,165,233,0.35); transform: translateY(-2px); }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0ea5e9; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1001; display:none; }
+    .avatar-circle { width: 96px; height: 96px; border-radius: 9999px; overflow: hidden; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); }
+  </style>
+
+  <!-- App Check site key (banner informativo) -->
+  <meta name="app_check_site_key" content="6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2" />
+  <!-- App Check provider selection -->
+  <meta name="app_check_provider" content="v3" />
+  <style>
+    .tcs-recaptcha-banner{position:fixed;left:0;right:0;top:0;z-index:10000;background:#7f1d1d;color:#fecaca;border-bottom:1px solid #fca5a5;padding:.6rem 1rem;font-size:.9rem;display:none}
+    .tcs-recaptcha-banner b{color:#fff}
+  </style>
+</head>
+<body class="min-h-screen text-white font-inter">
+  <div id="tcsRecaptchaBanner" class="tcs-recaptcha-banner">⚠️ <b>App Check</b>: reCAPTCHA no está configurado para este dominio. Revisa el site key de App Check.</div>
+  <header class="fixed w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-id-card text-blue-300 text-2xl"></i>
+        <span class="text-xl font-bold gradient-text">TuCitaSegura</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="userEmail" class="text-blue-100 text-sm"></span>
+        <button id="logoutBtn" class="glass px-4 py-2 rounded-full font-semibold hover:bg-white/20 transition-all">Salir</button>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 pt-24 pb-16">
+    <!-- Banner verificación -->
+    <div id="verifyBanner" class="hidden glass border border-yellow-400/40 text-yellow-100 p-4 rounded-xl mb-6">
+      <div class="flex items-center justify-between gap-4">
+        <p class="text-sm">Debes verificar tu email para activar todas las funciones.</p>
+        <button id="resendBtn" class="px-4 py-2 rounded bg-yellow-500/20 text-yellow-100 font-semibold hover:bg-yellow-500/30">Reenviar verificación</button>
+      </div>
+    </div>
+    <!-- Banner teléfono requerido -->
+    <div id="phoneRequiredBanner" class="hidden glass border border-red-500/40 bg-red-600/10 text-red-100 p-4 rounded-xl mb-6">
+      <div class="flex items-center justify-between gap-4">
+        <p class="text-sm">Debes verificar tu teléfono por SMS para acceder a búsquedas, chats y citas.</p>
+        <button id="bannerSendOtpBtn" class="px-4 py-2 rounded bg-red-500/20 text-red-100 font-semibold hover:bg-red-500/30">Enviar código</button>
+      </div>
+    </div>
+    <!-- Banner validación de perfil requerida -->
+    <div id="validationRequiredBanner" class="hidden glass border border-yellow-500/40 bg-yellow-600/10 text-yellow-100 p-4 rounded-xl mb-6">
+      <div class="flex items-center justify-between gap-4">
+        <p class="text-sm">Tu perfil debe estar completo y será <b>validado</b> por nuestro equipo. Te avisaremos por email/SMS/notificación cuando esté aprobado.</p>
+        <a href="#profileForm" class="px-4 py-2 rounded bg-yellow-500/20 text-yellow-100 font-semibold hover:bg-yellow-500/30">Completar perfil</a>
+      </div>
+    </div>
+
+    <section class="glass rounded-2xl p-6 md:p-8">
+      <h1 class="text-3xl md:text-4xl font-black mb-2 gradient-text">Mi Perfil</h1>
+      <span id="conciergeBadge" class="ml-2 px-3 py-1 rounded-full text-xs bg-indigo-600/30 text-indigo-200 border border-indigo-400/40 hidden">🎩 Concierge Verificado</span>
+      <p class="text-blue-100 mb-6">Completa tu información para mejorar tus coincidencias.</p>
+
+      <form id="profileForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="md:col-span-2 flex items-center gap-6">
+          <div class="avatar-circle">
+            <img id="avatarPreview" src="" alt="Previsualización" class="w-full h-full object-cover hidden" />
+          </div>
+          <div>
+            <label for="avatarInput" class="block mb-1 text-blue-100">Avatar</label>
+            <input id="avatarInput" type="file" accept="image/*" class="block text-sm" />
+            <button id="uploadAvatarBtn" type="button" class="mt-2 btn-primary px-4 py-2 rounded text-white font-semibold">Subir avatar</button>
+            <p class="text-xs text-blue-100 mt-2">Formatos: PNG/JPG/JPEG. Máx: 5MB.</p>
+            <p class="text-xs text-yellow-200 mt-1">Obligatorio: sube una foto de perfil para completar.</p>
+          </div>
+        </div>
+        <!-- Alias y Género se establecen en el registro; no se muestran aquí -->
+        <!-- PayPal (solo mujeres) -->
+        <div id="paypalFieldWrap" class="hidden">
+          <label for="paypalEmailInput" class="block mb-1 text-blue-100">PayPal (email)</label>
+          <input id="paypalEmailInput" type="email" class="input bg-white/10 text-white border border-white/20 w-full" placeholder="tu@email.com" />
+          <div class="text-xs text-yellow-200 mt-1">Obligatorio si tu género es <b>Femenino</b>.</div>
+          <div class="text-xs text-blue-200 mt-1">Este correo puede ser distinto al utilizado en el registro.</div>
+        </div>
+        <!-- Ocupación -->
+        <div>
+          <label for="occupationInput" class="block mb-1 text-blue-100">Ocupación</label>
+          <input id="occupationInput" type="text" class="input bg-white/10 text-white border border-white/20 w-full" placeholder="¿A qué te dedicas?" />
+        </div>
+        <!-- Verificación de teléfono (OTP) -->
+        <div class="md:col-span-2 glass p-4 rounded-xl">
+          <h2 class="text-xl font-bold mb-2">Verificación de teléfono</h2>
+          <p class="text-sm text-blue-100 mb-3">Añade tu teléfono para aumentar tu reputación y habilitar recuperación por SMS.</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <div>
+              <label for="phoneInput" class="block mb-1 text-blue-100">Teléfono (formato internacional)</label>
+              <input id="phoneInput" type="tel" class="input bg-white/10 text-white border border-white/20 w-full" placeholder="+34XXXXXXXXX" autocomplete="tel" />
+            </div>
+            <div>
+              <button id="sendOtpBtn" type="button" class="btn-secondary w-full py-2 rounded">Enviar código</button>
+            </div>
+            <div>
+              <label for="otpCodeInput" class="block mb-1 text-blue-100">Código SMS</label>
+              <input id="otpCodeInput" type="text" inputmode="numeric" pattern="[0-9]*" class="input bg-white/10 text-white border border-white/20 w-full" placeholder="123456" />
+            </div>
+          </div>
+          <div class="flex gap-3 mt-3">
+            <button id="confirmOtpBtn" type="button" class="btn-primary flex-1 py-2 rounded">Confirmar teléfono</button>
+            <span id="phoneStatus" class="text-sm text-blue-200">—</span>
+          </div>
+          <div id="otpMsg" class="text-sm text-yellow-200 mt-2"></div>
+          <div id="recaptcha-container" class="hidden"></div>
+        </div>
+        <!-- Información personal -->
+        <div class="md:col-span-2 glass p-4 rounded-xl">
+          <h2 class="text-xl font-bold mb-2">Información personal</h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label for="relationshipSelect" class="block mb-1 text-blue-100">Estado civil</label>
+              <select id="relationshipSelect" class="input bg-white/10 text-white border border-white/20 w-full">
+                <option value="felizmente_separado_divorciado">Felizmente separado o divorciado</option>
+                <option value="casado_golfo">Casado y golfo</option>
+                <option value="viudo">Viudo</option>
+                <option value="libre_como_un_pajaro">Libre como un pájaro</option>
+                <option value="prefiero_no_contestar">Prefiero no contestar</option>
+              </select>
+            </div>
+            <div>
+              <label for="lookingForSelect" class="block mb-1 text-blue-100">¿Qué buscas?</label>
+              <select id="lookingForSelect" class="input bg-white/10 text-white border border-white/20 w-full">
+                <option value="casual">Cosas esporádicas</option>
+                <option value="long_term">A largo plazo</option>
+                <option value="friendship">Amistad</option>
+              </select>
+            </div>
+            <div class="md:col-span-1">
+              <label for="bioInput" class="block mb-1 text-blue-100">Autodescripción (mínimo 120 palabras)</label>
+              <textarea id="bioInput" rows="4" class="input bg-white/10 text-white border border-white/20 w-full" placeholder="Escribe al menos 120 palabras sobre ti"></textarea>
+              <div class="text-xs text-blue-200 mt-1">Palabras: <span id="bioWordCount">0</span> / 120</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fotos adicionales (galería) -->
+        <div class="md:col-span-2 glass p-4 rounded-xl">
+          <h2 class="text-xl font-bold mb-2">Fotos adicionales</h2>
+          <p class="text-sm text-blue-100 mb-3">Puedes subir hasta 6 fotos extra. <b>Obligatorio: al menos 2</b> además del avatar.</p>
+          <div class="flex items-center gap-4 mb-3">
+            <label for="galleryInput" class="block mb-1 text-blue-100">Subir fotos</label>
+            <input id="galleryInput" type="file" accept="image/*" multiple class="block text-sm" />
+            <span class="text-xs text-blue-100">Formatos: PNG/JPG/JPEG. Máx: 5MB por foto.</span>
+          </div>
+          <div id="galleryPreview" class="grid grid-cols-3 md:grid-cols-6 gap-2"></div>
+          <div id="galleryMsg" class="text-xs text-yellow-200 mt-2"></div>
+        </div>
+
+        <!-- Ubicación de origen -->
+        <div class="md:col-span-2 glass p-4 rounded-xl">
+          <h2 class="text-xl font-bold mb-2">Municipio de origen</h2>
+          <p class="text-sm text-blue-100 mb-3">Indica tu municipio de origen para mejorar tus coincidencias.</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+            <div>
+              <label for="municipalityInput" class="block mb-1 text-blue-100">Municipio</label>
+              <input id="municipalityInput" type="text" class="input bg-white/10 text-white border border-white/20 w-full" placeholder="Buscar municipio" />
+              <div id="originSummary" class="text-xs text-blue-200 mt-1">—</div>
+              <div class="text-xs text-yellow-200 mt-1">Obligatorio: selecciona tu municipio de origen.</div>
+            </div>
+          </div>
+          <div id="originMap" class="rounded-xl overflow-hidden border border-white/20 hidden" style="height: 0; background: rgba(255,255,255,0.06);"></div>
+          <div id="originMapMsg" class="text-xs text-yellow-200 mt-2 hidden"></div>
+        </div>
+        <!-- Preferencias de notificación -->
+        <div class="md:col-span-2 glass p-4 rounded-xl">
+          <h2 class="text-xl font-bold mb-2">Preferencias de notificación</h2>
+          <p class="text-sm text-blue-100 mb-3">Elige cómo quieres recibir avisos (validación y otros eventos).</p>
+          <div class="flex gap-6 items-center">
+            <label class="flex items-center gap-2"><input id="notifyEmailChk" type="checkbox" class="accent-blue-500" /> Email</label>
+            <label class="flex items-center gap-2"><input id="notifySmsChk" type="checkbox" class="accent-blue-500" /> SMS</label>
+            <label class="flex items-center gap-2"><input id="notifyPushChk" type="checkbox" class="accent-blue-500" /> Push</label>
+          </div>
+          <p class="text-xs text-blue-200 mt-2">Por defecto usamos email. Puedes cambiarlo cuando quieras.</p>
+        </div>
+        <div class="md:col-span-2">
+          <button id="saveProfileBtn" type="button" class="btn-primary w-full py-3 rounded text-white font-bold">Guardar y continuar</button>
+        </div>
+      </form>
+    </section>
+
+    <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+  </main>
+
+  <script type="module">
+    import { auth, db, storage } from "./js/firebase-config-enterprise.js";
+    import { doc, setDoc, getDoc, deleteField } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { onAuthStateChanged, sendEmailVerification, signOut, RecaptchaVerifier, linkWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
+    import { showToast } from "./js/utils.js";
+
+    // Utilidades locales (asegurar disponibilidad antes de uso)
+    function updateGenderDependentFields() {
+      const isFemale = storedGender === 'female';
+      paypalFieldWrap.classList.toggle('hidden', !isFemale);
+    }
+    function isValidEmail(email) {
+      if (!email) return false;
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    // Referencias de UI y estado
+    const userEmailEl = document.getElementById("userEmail");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const verifyBanner = document.getElementById("verifyBanner");
+    const resendBtn = document.getElementById("resendBtn");
+    const phoneRequiredBanner = document.getElementById("phoneRequiredBanner");
+    const bannerSendOtpBtn = document.getElementById("bannerSendOtpBtn");
+    const validationRequiredBanner = document.getElementById("validationRequiredBanner");
+    const conciergeBadge = document.getElementById('conciergeBadge');
+    // OTP refs
+    const phoneInput = document.getElementById('phoneInput');
+    const sendOtpBtn = document.getElementById('sendOtpBtn');
+    const otpCodeInput = document.getElementById('otpCodeInput');
+    const confirmOtpBtn = document.getElementById('confirmOtpBtn');
+    const otpMsg = document.getElementById('otpMsg');
+    const phoneStatus = document.getElementById('phoneStatus');
+    const notifyEmailChk = document.getElementById('notifyEmailChk');
+    const notifySmsChk = document.getElementById('notifySmsChk');
+    const notifyPushChk = document.getElementById('notifyPushChk');
+    // Alias se define en el registro; no se utiliza en el perfil
+    const relationshipSelect = document.getElementById('relationshipSelect');
+    const lookingForSelect = document.getElementById('lookingForSelect');
+    const bioInput = document.getElementById('bioInput');
+    const bioWordCountEl = document.getElementById('bioWordCount');
+    const occupationInput = document.getElementById('occupationInput');
+    const galleryInput = document.getElementById('galleryInput');
+    const galleryPreview = document.getElementById('galleryPreview');
+    const galleryMsg = document.getElementById('galleryMsg');
+    const paypalFieldWrap = document.getElementById('paypalFieldWrap');
+    const paypalEmailInput = document.getElementById('paypalEmailInput');
+    let phoneVerifiedFlag = false;
+    let profileValidatedFlag = false;
+    const appCheckBanner = document.getElementById("tcsRecaptchaBanner");
+    let currentUser = null;
+    let storedGender = 'male';
+    // Host y entorno: sólo habilitamos OTP (reCAPTCHA) en dominios de producción
+    const host = location.hostname || '';
+    const isProdHost = /\.web\.app$/.test(host) || /\.firebaseapp\.com$/.test(host) || host === 'tucitasegura.com' || host === 'www.tucitasegura.com';
+    
+    // Acción del botón del banner para iniciar OTP y hacer scroll a la sección de teléfono
+    bannerSendOtpBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      try { sendOtp(); } catch {}
+      const y = phoneInput.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    });
+
+    // Banner App Check (heurística simple para localhost o ausencia de clave)
+    try {
+      const siteKey = document.querySelector('meta[name="app_check_site_key"]').getAttribute('content');
+      if (location.hostname === 'localhost' || !siteKey) {
+        appCheckBanner.style.display = 'block';
+      }
+    } catch {}
+
+    // Exigir sesión y precargar datos (con modo preview y demo)
+    const isPreview = new URLSearchParams(location.search).has('ide_webview_request_time');
+    // Simplificación: OTP activo por defecto; único switch opcional ?nocaptcha=1 o meta
+    function shouldSkipOtp() {
+      try {
+        const sp = new URLSearchParams(location.search);
+        const metaDisableEl = document.querySelector('meta[name="recaptcha:disable"]');
+        const metaDisabled = !!(metaDisableEl && (metaDisableEl.getAttribute('content') || '').toLowerCase() === 'true');
+        return sp.get('nocaptcha') === '1' || metaDisabled;
+      } catch {
+        return false;
+      }
+    }
+    const isDemo = new URLSearchParams(location.search).get('demo') === '1';
+    // Avisos según motivo de redirección
+    try {
+      const reason = new URLSearchParams(location.search).get('reason');
+      if (reason === 'phone-required') {
+        phoneRequiredBanner.classList.remove('hidden');
+        otpMsg.textContent = '⚠️ Debes verificar tu teléfono por SMS para acceder a las funciones.';
+        otpMsg.classList.add('text-yellow-200');
+        showToast('Verifica tu teléfono para continuar', 'warning');
+      } else if (reason === 'validation-required') {
+        validationRequiredBanner.classList.remove('hidden');
+        showToast('Tu perfil debe estar completado y validado', 'warning');
+      }
+    } catch {}
+  onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        // Mantener página estática, sin redirección automática
+        showToast('Inicia sesión para editar tu perfil', 'info');
+        return;
+      }
+      currentUser = user;
+      userEmailEl.textContent = user.email || "";
+      verifyBanner.classList.toggle('hidden', !!user.emailVerified);
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      const data = snap.exists() ? snap.data() : {};
+      if (!snap.exists()) {
+        try {
+          await setDoc(userRef, {
+            profileComplete: false,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (e) {
+          console.warn("No se pudo inicializar el perfil del usuario", e);
+        }
+      }
+      const privateSnap = await getDoc(doc(db, "users_private", user.uid));
+      const priv = privateSnap.exists() ? privateSnap.data() : {};
+      // Mostrar badge Concierge si el rol es concierge (claim o perfil)
+      try {
+        const tokenResult = await user.getIdTokenResult().catch(() => null);
+        const roleClaim = tokenResult?.claims?.role;
+        if (roleClaim === 'concierge' || data.role === 'concierge') {
+          conciergeBadge.classList.remove('hidden');
+        } else {
+          conciergeBadge.classList.add('hidden');
+        }
+      } catch {}
+      // Alias no se muestra en el perfil
+      const dg = (data.gender || '').toLowerCase();
+      storedGender = (dg === 'femenino' || dg === 'female') ? 'female' : 'male';
+      paypalEmailInput.value = data.paypalEmail || "";
+      {
+        const allowed = [
+          'felizmente_separado_divorciado',
+          'casado_golfo',
+          'viudo',
+          'libre_como_un_pajaro',
+          'prefiero_no_contestar'
+        ];
+        let rs = data.relationshipStatus;
+        // Mapeo automático de valores antiguos a los nuevos
+        if (rs === 'single') rs = 'libre_como_un_pajaro';
+        if (rs === 'in_relationship') rs = 'casado_golfo';
+        if (!allowed.includes(rs)) rs = 'prefiero_no_contestar';
+        relationshipSelect.value = rs;
+      }
+      lookingForSelect.value = data.lookingFor || "casual";
+      bioInput.value = data.bio || "";
+      occupationInput.value = data.occupation || "";
+      // Contador de palabras inicial
+      try { bioWordCountEl.textContent = countWords(bioInput.value.trim()); } catch {}
+      // Origen: prellenar si existe
+      try {
+        if (data.originMunicipality && typeof data.originMunicipality === 'string') {
+          originMunicipality = data.originMunicipality;
+          document.getElementById('originSummary').textContent = originMunicipality;
+        }
+      } catch {}
+      // Galería: precargar si existe
+      try {
+        if (Array.isArray(data.galleryUrls)) {
+          existingGalleryUrls = data.galleryUrls.slice(0,6);
+          renderGalleryPreview();
+        }
+      } catch {}
+      // Pre-fill phone (privado)
+      const isPhoneVerified = !!priv?.phoneVerified;
+      if (priv?.phone) {
+        phoneInput.value = priv.phone;
+      }
+      phoneStatus.textContent = isPhoneVerified ? 'Teléfono verificado' : 'Teléfono sin verificar';
+      phoneStatus.classList.toggle('text-green-300', isPhoneVerified);
+      phoneStatus.classList.toggle('text-yellow-200', !isPhoneVerified);
+      phoneVerifiedFlag = isPhoneVerified;
+      // Mostrar/ocultar banner de teléfono requerido en función de phoneVerified
+      if (!phoneVerifiedFlag) {
+        phoneRequiredBanner.classList.remove('hidden');
+      } else {
+        phoneRequiredBanner.classList.add('hidden');
+      }
+      // Mostrar/ocultar banner de validación requerida
+      profileValidatedFlag = !!data.profileValidated;
+      if (!profileValidatedFlag) {
+        validationRequiredBanner.classList.remove('hidden');
+      } else {
+        validationRequiredBanner.classList.add('hidden');
+      }
+      // Preferencias de notificación (por defecto email)
+      try {
+        const prefs = Array.isArray(data.notifyChannels) && data.notifyChannels.length ? data.notifyChannels : ['email'];
+        notifyEmailChk.checked = prefs.includes('email');
+        notifySmsChk.checked = prefs.includes('sms');
+        notifyPushChk.checked = prefs.includes('push');
+      } catch {}
+      if (data.avatarUrl) {
+        avatarPreview.src = data.avatarUrl;
+        avatarPreview.classList.remove('hidden');
+        avatarExistingUrl = data.avatarUrl;
+        updateSaveButtonState();
+      }
+      // Precargar ubicaciones guardadas
+      if (data.meetingPoint && data.meetingPoint.lat && data.meetingPoint.lng) {
+        meetingPlace = data.meetingPoint;
+        document.getElementById('meetingSummary').textContent = `${meetingPlace.address || 'Punto guardado'} (${meetingPlace.lat.toFixed(5)}, ${meetingPlace.lng.toFixed(5)})`;
+      }
+      if (data.backupPoint && data.backupPoint.lat && data.backupPoint.lng) {
+        backupPlace = data.backupPoint;
+        document.getElementById('backupSummary').textContent = `${backupPlace.address || 'Punto guardado'} (${backupPlace.lat.toFixed(5)}, ${backupPlace.lng.toFixed(5)})`;
+      }
+      // Inicializar Google Maps para origen
+      await initGoogleMaps();
+      await setupMunicipalityAutocomplete();
+      updateGenderDependentFields();
+      updateSaveButtonState();
+    });
+
+    const avatarInput = document.getElementById("avatarInput");
+    const avatarPreview = document.getElementById("avatarPreview");
+    const uploadAvatarBtn = document.getElementById("uploadAvatarBtn");
+    let selectedFile = null;
+    let avatarExistingUrl = null;
+
+    avatarInput.addEventListener("change", () => {
+      const file = avatarInput.files?.[0];
+      if (!file) { selectedFile = null; avatarPreview.classList.add("hidden"); return; }
+      if (!file.type.startsWith("image/")) {
+        showToast("Selecciona una imagen válida", "error");
+        avatarInput.value = "";
+        selectedFile = null;
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        showToast("Imagen demasiado grande (máx 5MB)", "error");
+        avatarInput.value = "";
+        selectedFile = null;
+        return;
+      }
+      selectedFile = file;
+      const url = URL.createObjectURL(file);
+      avatarPreview.src = url;
+      avatarPreview.classList.remove("hidden");
+      updateSaveButtonState();
+    });
+
+    async function uploadAvatar(user, file) {
+      const ownerGender = storedGender === 'female' ? 'femenino' : 'masculino';
+      const path = `profile_photos/${ownerGender}/${user.uid}/avatar.jpg`;
+      const storageRef = ref(storage, path);
+      const metadata = { contentType: file.type, customMetadata: { ownerGender } };
+      const snap = await uploadBytes(storageRef, file, metadata);
+      const downloadURL = await getDownloadURL(snap.ref);
+      return downloadURL;
+    }
+
+    uploadAvatarBtn.addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      if (!selectedFile) { showToast("Selecciona una imagen primero", "info"); return; }
+      try {
+        const url = await uploadAvatar(user, selectedFile);
+        await setDoc(doc(db, "users", user.uid), { avatarUrl: url }, { merge: true });
+        avatarExistingUrl = url;
+        showToast("Avatar actualizado", "success");
+        updateSaveButtonState();
+      } catch (e) {
+        console.error(e);
+        showToast("No se pudo subir el avatar", "error");
+      }
+    });
+
+    document.getElementById("saveProfileBtn").addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      if (isSaving) { showToast('Guardando, por favor espera…', 'info'); return; }
+      // Validación: municipio obligatorio
+      const hasOrigin = !!originMunicipality && originMunicipality.trim().length > 0;
+      if (!hasOrigin) {
+        showToast("Selecciona tu municipio de origen", "warning");
+        try { document.getElementById('municipalityInput')?.focus(); } catch {}
+        return;
+      }
+      const gender = storedGender;
+      // Validación: avatar obligatorio
+      const hasAvatar = !!selectedFile || !!avatarExistingUrl || (!!avatarPreview.src && !avatarPreview.classList.contains('hidden'));
+      if (!hasAvatar) {
+        showToast("Sube tu avatar para completar el perfil", "warning");
+        try { document.getElementById('avatarInput')?.focus(); } catch {}
+        const y2 = document.getElementById('avatarInput').getBoundingClientRect().top + window.scrollY - 120;
+        window.scrollTo({ top: y2, behavior: 'smooth' });
+        return;
+      }
+      // Validación: PayPal obligatorio si es mujer
+      if (storedGender === 'female') {
+        const pp = paypalEmailInput.value.trim();
+        if (!isValidEmail(pp)) {
+          showToast("Debes rellenar tu email de PayPal", "warning");
+          try { paypalEmailInput?.focus(); } catch {}
+          return;
+        }
+      }
+      // Validación: galería mínimo 2
+      const galleryCount = (existingGalleryUrls?.length || 0) + (galleryFiles?.length || 0);
+      if (galleryCount < 2) {
+        showToast("Sube al menos 2 fotos adicionales", "warning");
+        try { galleryInput?.focus(); } catch {}
+        return;
+      }
+      // Validación: ocupación obligatoria
+      const occupation = occupationInput.value.trim();
+      if (!occupation) {
+        showToast("Indica tu ocupación", "warning");
+        try { occupationInput?.focus(); } catch {}
+        return;
+      }
+      const relationshipStatus = relationshipSelect.value;
+      const lookingFor = lookingForSelect.value;
+      const bio = bioInput.value.trim();
+      // Validación: bio mínimo 120 palabras
+      if (countWords(bio) < 120) {
+        showToast("Autodescripción mínima de 120 palabras", "warning");
+        try { bioInput?.focus(); } catch {}
+        return;
+      }
+      try {
+        isSaving = true;
+        try { saveProfileBtn.disabled = true; saveProfileBtn.classList.add('opacity-60','cursor-not-allowed'); } catch {}
+        let avatarUrl = undefined;
+        if (selectedFile) {
+          try {
+            avatarUrl = await uploadAvatar(user, selectedFile);
+          } catch (e) {
+            console.warn("Subida de avatar falló, guardando perfil sin imagen", e);
+          }
+        }
+        // Subir galería (nuevas fotos)
+        let uploadedGallery = [];
+        if (galleryFiles.length) {
+          for (let i = 0; i < galleryFiles.length && i < 6; i++) {
+            const file = galleryFiles[i];
+            try {
+            const ownerGender = storedGender === 'female' ? 'femenino' : 'masculino';
+            const path = `profile_photos/${ownerGender}/${user.uid}/${Date.now()}-${i}.jpg`;
+            const storageRef = ref(storage, path);
+            const metadata = { contentType: file.type, customMetadata: { ownerGender } };
+            const snap = await uploadBytes(storageRef, file, metadata);
+            const url = await getDownloadURL(snap.ref);
+            uploadedGallery.push(url);
+            } catch (e) {
+              console.warn('Error subiendo foto de galería', e);
+            }
+          }
+        }
+        const galleryUrls = [...(existingGalleryUrls || []), ...uploadedGallery].slice(0,6);
+        // Perfil puede completarse aunque el teléfono no esté verificado (validación la hace admin)
+        // Calcula perfil completo basado en campos obligatorios
+      const isComplete = (
+        hasOrigin &&
+        hasAvatar &&
+        galleryUrls.length >= 2 &&
+        !!storedGender &&
+        !!occupation &&
+        !!relationshipStatus &&
+        !!lookingFor &&
+        (storedGender === 'female' ? isValidEmail(paypalEmailInput.value.trim()) : true) &&
+        countWords(bio) >= 120
+      );
+        const payload = {
+          relationshipStatus,
+          lookingFor,
+          occupation,
+          ...(bio ? { bio } : {}),
+          profileComplete: isComplete,
+          ...(avatarUrl ? { avatarUrl } : {})
+        };
+        if (originMunicipality && typeof originMunicipality === 'string') {
+          payload.originMunicipality = originMunicipality;
+        }
+        if (galleryUrls.length) {
+          payload.galleryUrls = galleryUrls;
+        }
+        const paypalEmailVal = (paypalEmailInput?.value || '').trim();
+        if (storedGender === 'female') {
+          if (paypalEmailVal) payload.paypalEmail = paypalEmailVal;
+        } else {
+          // Eliminar PayPal para perfiles masculinos
+          payload.paypalEmail = deleteField();
+        }
+        // Teléfono se guarda en users_private; no en perfil público
+        // Guardar preferencias seleccionadas (email por defecto si nada marcado)
+        const selected = [];
+        if (notifyEmailChk.checked) selected.push('email');
+        if (notifySmsChk.checked) selected.push('sms');
+        if (notifyPushChk.checked) selected.push('push');
+        payload.notifyChannels = selected.length ? selected : ['email'];
+        await setDoc(doc(db, "users", user.uid), payload, { merge: true });
+        showToast(isComplete ? "Perfil guardado y completo. Queda pendiente de validación." : "Perfil guardado, pero incompleto. Complétalo para navegar.", isComplete ? "success" : "warning");
+        // Si está incompleto, permanecer y mostrar aviso
+        if (!isComplete) {
+          validationRequiredBanner.classList.remove('hidden');
+        }
+      } catch (e) {
+        try { console.error(e); } catch {}
+        const msg = (e && e.code === 'permission-denied') ? 'Permisos insuficientes para guardar el perfil' : 'No se pudo guardar el perfil';
+        showToast(msg, "error");
+      } finally {
+        isSaving = false;
+        try { saveProfileBtn.disabled = false; saveProfileBtn.classList.remove('opacity-60','cursor-not-allowed'); } catch {}
+      }
+    });
+
+    // Reenviar verificación de correo
+    resendBtn.addEventListener('click', async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      try { await sendEmailVerification(user); showToast('Verificación reenviada', 'success'); }
+      catch (e) { console.error(e); showToast('No se pudo reenviar', 'error'); }
+    });
+
+    // Logout
+    logoutBtn.addEventListener('click', async () => {
+      try { await signOut(auth); location.href = '/'; }
+      catch (e) { console.error(e); showToast('No se pudo cerrar sesión', 'error'); }
+    });
+
+    // Carga dinámica de Google Maps y configuración de origen (solo Autocomplete de municipios)
+    async function initGoogleMaps() {
+      try {
+        const r = await fetch('/api/maps-key');
+        const { key } = await r.json();
+        const msg = document.getElementById('originMapMsg');
+        if (!key) {
+          msg.textContent = 'Google Maps no está configurado (GMAPS_API_KEY ausente).';
+          msg.classList.remove('hidden');
+          return;
+        }
+        // Solo necesitamos la librería Places para Autocomplete
+        await loadMapsScript(key);
+        // Validar disponibilidad tras carga (captura casos de clave inválida)
+        if (!window.google || !window.google.maps || !google.maps.places) {
+          msg.textContent = 'Google Maps no disponible (clave inválida o restringida).';
+          msg.classList.remove('hidden');
+        }
+      } catch (e) {
+        console.error('Maps init error', e);
+        const msg = document.getElementById('originMapMsg');
+        if (msg) { msg.textContent = 'Error inicializando Google Maps (clave inválida)'; msg.classList.remove('hidden'); }
+      }
+    }
+
+    function loadMapsScript(key) {
+      return new Promise((resolve, reject) => {
+        if (window.google && window.google.maps) return resolve();
+        const s = document.createElement('script');
+        s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
+        s.setAttribute('loading','async');
+        s.async = true;
+        s.defer = true;
+        s.onload = () => resolve();
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    let originMunicipality = null;
+    let existingGalleryUrls = [];
+    let galleryFiles = [];
+
+    function setupMunicipalityAutocomplete() {
+      try {
+        const input = document.getElementById('municipalityInput');
+        if (!window.google || !window.google.maps || !google.maps.places) {
+          console.warn('Google Places no disponible');
+          // Fallback: usar entrada manual
+          input.addEventListener('blur', () => {
+            const val = input.value.trim();
+            originMunicipality = val || null;
+            document.getElementById('originSummary').textContent = val || '—';
+            updateSaveButtonState();
+          });
+          return;
+        }
+        const auto = new google.maps.places.Autocomplete(input, { types: ['(cities)'], fields: ['formatted_address','name'] });
+        auto.addListener('place_changed', () => {
+          const p = auto.getPlace();
+          const name = p?.name || p?.formatted_address || '';
+          originMunicipality = name || null;
+          document.getElementById('originSummary').textContent = name || '—';
+          updateSaveButtonState();
+        });
+      } catch (e) {
+        console.error('Error configurando Autocomplete de municipio', e);
+      }
+    }
+
+    function renderGalleryPreview() {
+      if (!galleryPreview) return;
+      galleryPreview.innerHTML = '';
+      const urls = existingGalleryUrls || [];
+      const files = galleryFiles || [];
+      const total = [...urls, ...files.map(f => URL.createObjectURL(f))].slice(0,6);
+      total.forEach(src => {
+        const div = document.createElement('div');
+        div.className = 'relative w-full h-20 md:h-24 rounded overflow-hidden border border-white/20';
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = 'Foto';
+        img.className = 'w-full h-full object-cover';
+        div.appendChild(img);
+        galleryPreview.appendChild(div);
+      });
+      const count = (existingGalleryUrls?.length || 0) + (galleryFiles?.length || 0);
+      galleryMsg.textContent = count < 2 ? `Faltan ${2 - count} foto(s) para el mínimo de 2.` : '';
+    }
+
+    galleryInput?.addEventListener('change', () => {
+      const files = Array.from(galleryInput.files || []);
+      const images = files.filter(f => f.type.startsWith('image/'));
+      // Validaciones
+      if (images.length > 6) {
+        showToast('Máximo 6 fotos adicionales', 'warning');
+      }
+      const tooBig = images.find(f => f.size > 5 * 1024 * 1024);
+      if (tooBig) {
+        showToast('Una o más fotos exceden 5MB', 'error');
+      }
+      galleryFiles = images.slice(0,6);
+      renderGalleryPreview();
+      updateSaveButtonState();
+    });
+
+    function countWords(text) {
+      if (!text) return 0;
+      return text.trim().split(/\s+/).filter(Boolean).length;
+    }
+
+    bioInput?.addEventListener('input', () => {
+      try { bioWordCountEl.textContent = countWords(bioInput.value.trim()); } catch {}
+      updateSaveButtonState();
+    });
+
+    function updateSaveButtonState() {
+      const btn = document.getElementById('saveProfileBtn');
+      if (!btn) return;
+      const hasOrigin = !!originMunicipality && originMunicipality.trim().length > 0;
+      const hasAvatar = !!selectedFile || !!avatarExistingUrl || (!!avatarPreview.src && !avatarPreview.classList.contains('hidden'));
+      const galleryCount = (existingGalleryUrls?.length || 0) + (galleryFiles?.length || 0);
+      const hasGalleryMin = galleryCount >= 2;
+      const hasOccupation = occupationInput && occupationInput.value.trim().length > 0;
+      const hasRel = !!relationshipSelect.value;
+      const hasLF = !!lookingForSelect.value;
+      const hasBioMin = countWords(bioInput.value.trim()) >= 120;
+      const hasPaypalOk = storedGender === 'female' ? isValidEmail((paypalEmailInput?.value || '').trim()) : true;
+      const canSave = hasOrigin && hasAvatar && hasGalleryMin && hasOccupation && hasRel && hasLF && hasBioMin && hasPaypalOk;
+      btn.disabled = !canSave;
+      btn.classList.toggle('opacity-60', !canSave);
+      btn.classList.toggle('cursor-not-allowed', !canSave);
+    }
+
+    // ===== OTP Phone Linking =====
+    let phoneRecaptcha = null;
+    let otpConfirmation = null;
+    function initPhoneRecaptcha() {
+      if (shouldSkipOtp()) {
+        otpMsg.textContent = 'ℹ️ OTP desactivado (usar ?nocaptcha=1 para pruebas)';
+        return null;
+      }
+      if (phoneRecaptcha) return phoneRecaptcha;
+      try {
+        // Intento modular (SDK v9+): auth como primer parámetro
+        if (!auth) {
+          throw new Error('Auth no inicializado');
+        }
+        phoneRecaptcha = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+      } catch (e) {
+        console.error('Error creando RecaptchaVerifier (modular)', e);
+        // Fallback a firma compat: container, params, auth
+        try {
+          phoneRecaptcha = new RecaptchaVerifier('recaptcha-container', { size: 'invisible' }, auth);
+        } catch (e2) {
+          console.error('Error creando RecaptchaVerifier (compat)', e2);
+        }
+      }
+      return phoneRecaptcha;
+    }
+    async function sendOtp() {
+      if (shouldSkipOtp()) { showToast('OTP desactivado (?nocaptcha=1)', 'info'); return; }
+      otpMsg.textContent = '';
+      const phone = phoneInput.value.trim();
+      if (!/^\+[0-9]{8,15}$/.test(phone)) {
+        otpMsg.textContent = '❌ Formato de teléfono inválido. Usa +34...';
+        showToast('Teléfono inválido. Usa formato internacional', 'warning');
+        return;
+      }
+      const user = auth.currentUser;
+      if (!user) { showToast('Sesión requerida', 'error'); return; }
+      try {
+        await (globalThis.__appCheckReady || Promise.resolve(null));
+        const verifier = initPhoneRecaptcha();
+        otpConfirmation = await linkWithPhoneNumber(user, phone, verifier);
+        otpMsg.textContent = '✅ Código enviado por SMS';
+        showToast('Código enviado por SMS', 'success');
+      } catch (e) {
+        console.error('Error enviando OTP', e);
+        otpMsg.textContent = '❌ No se pudo enviar el código';
+        showToast('No se pudo enviar el código', 'error');
+      }
+    }
+    async function confirmOtp() {
+      if (shouldSkipOtp()) { showToast('OTP desactivado (?nocaptcha=1)', 'info'); return; }
+      otpMsg.textContent = '';
+      const code = otpCodeInput.value.trim();
+      if (!code) { showToast('Ingresa el código', 'warning'); return; }
+      if (!otpConfirmation) { showToast('Primero solicita el código', 'warning'); return; }
+      try {
+        await (globalThis.__appCheckReady || Promise.resolve(null));
+        const result = await otpConfirmation.confirm(code);
+        // Guardar en perfil
+        const phone = phoneInput.value.trim();
+        await setDoc(doc(db, 'users_private', result.user.uid), { phone, phoneVerified: true, updatedAt: new Date() }, { merge: true });
+        phoneStatus.textContent = 'Teléfono verificado';
+        phoneStatus.classList.add('text-green-300');
+        phoneStatus.classList.remove('text-yellow-200');
+        phoneVerifiedFlag = true;
+        phoneRequiredBanner.classList.add('hidden');
+        otpMsg.textContent = '✅ Teléfono verificado y vinculado a tu cuenta';
+        showToast('Teléfono verificado', 'success');
+      } catch (e) {
+        console.error('Error confirmando OTP', e);
+        otpMsg.textContent = '❌ Código inválido o expirado';
+        showToast('Código inválido o expirado', 'error');
+      }
+    }
+    // Deshabilitar botones OTP sólo si explícitamente desactivado
+    try { 
+      const disabled = shouldSkipOtp();
+      sendOtpBtn.disabled = disabled; 
+      confirmOtpBtn.disabled = disabled; 
+    } catch {}
+    sendOtpBtn.addEventListener('click', (e) => { e.preventDefault(); sendOtp(); });
+    confirmOtpBtn.addEventListener('click', (e) => { e.preventDefault(); confirmOtp(); });
+  </script>
+
+  <!-- Guard opcional: asegura sesión; no redirige cuando ya estás en perfil -->
+  <script type="module" src="./js/guards.js"></script>
+</body>
+</html>

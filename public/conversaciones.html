@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Conversaciones — TuCitaSegura</title>
+  <link rel="stylesheet" href="/styles.css" />
+ <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous" />
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 35%, #0369a1 100%); }
+    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
+    .badge { font-size: 11px; padding: 2px 6px; border-radius: 999px; }
+  </style>
+</head>
+<body class="min-h-screen text-white font-inter">
+  <header class="fixed w-full top-0 z-50 glass">
+    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-comments text-blue-300 text-2xl"></i>
+        <span class="text-xl font-bold">Conversaciones</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="userEmail" class="text-blue-100 text-sm"></span>
+        <a href="/" class="glass px-3 py-2 rounded">Inicio</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 pt-24 pb-16">
+    <section class="glass rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold">Tus chats</h1>
+        <button id="newChatBtn" class="btn-primary px-4 py-2 rounded">Nuevo chat</button>
+      </div>
+      <div id="emptyState" class="text-sm text-blue-100 hidden">No tienes conversaciones aún.</div>
+      <ul id="conversationsList" class="space-y-3"></ul>
+    </section>
+    <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+  </main>
+
+  <script type="module">
+  import { auth, db } from "/js/firebase-config-enterprise.js";
+    import { 
+      doc, getDoc, collection, query, where, getDocs, orderBy, limit, setDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { showToast } from "/js/utils.js";
+
+    const userEmailEl = document.getElementById('userEmail');
+    const listEl = document.getElementById('conversationsList');
+    const emptyEl = document.getElementById('emptyState');
+    const newChatBtn = document.getElementById('newChatBtn');
+
+    function calcKm(a, b) {
+      if (!a || !b || a.lat == null || a.lng == null || b.lat == null || b.lng == null) return null;
+      const R = 6371;
+      const dLat = (b.lat - a.lat) * Math.PI/180;
+      const dLon = (b.lng - a.lng) * Math.PI/180;
+      const lat1 = a.lat * Math.PI/180;
+      const lat2 = b.lat * Math.PI/180;
+      const aa = Math.sin(dLat/2)**2 + Math.sin(dLon/2)**2 * Math.cos(lat1) * Math.cos(lat2);
+      const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1-aa));
+      return Math.round(R * c);
+    }
+
+    function reputationBadge(level) {
+      const map = { Platino: 'bg-cyan-500/30 text-cyan-200', Oro: 'bg-yellow-500/30 text-yellow-200', Plata: 'bg-gray-400/30 text-gray-200', Bronce: 'bg-amber-700/30 text-amber-200' };
+      const cls = map[level] || map['Bronce'];
+      return `<span class="badge ${cls}">${level}</span>`;
+    }
+    function availabilityBadge(user) {
+      const required = 120; // heurística; ideal: consultar política
+      const deposited = (typeof user.depositAmount === 'number' && user.depositAmount >= required) || user.depositPaid === true;
+      const cls = deposited ? 'bg-green-500/30 text-green-200' : 'bg-yellow-500/30 text-yellow-200';
+      const txt = deposited ? 'Disponible (verde)' : 'Futura (amarilla)';
+      return `<span class="badge ${cls}">${txt}</span>`;
+    }
+
+    function itemTemplate(convId, me, otherUser) {
+      const isMale = otherUser.gender === 'male';
+      const badges = isMale ? reputationBadge(otherUser.level || 'Bronce') : availabilityBadge(otherUser);
+      const km = calcKm(me.meetingPoint || me.location, otherUser.meetingPoint || otherUser.location);
+      const distanceTxt = km != null ? `${km} km` : '— km';
+      return `
+        <li class="glass p-3 rounded flex items-center justify-between">
+          <div>
+            <div class="font-semibold">${otherUser.alias || otherUser.email || 'Usuario'}</div>
+            <div class="text-xs text-blue-100 flex items-center gap-2">${badges} <span>${distanceTxt}</span></div>
+          </div>
+          <div class="flex items-center gap-2">
+            <a href="/chat.html?cid=${convId}" class="btn-primary px-3 py-2 rounded">Abrir chat</a>
+            <button class="glass px-3 py-2 rounded" data-action="block" data-uid="${otherUser.id}">Bloquear</button>
+            <button class="glass px-3 py-2 rounded" data-action="hide" data-uid="${otherUser.id}">Ocultar</button>
+            <a href="/cita.html?with=${otherUser.id}" class="glass px-3 py-2 rounded">Abrir agenda</a>
+          </div>
+        </li>
+      `;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { location.href = '/'; return; }
+      userEmailEl.textContent = user.email || '';
+      listEl.innerHTML = '';
+      emptyEl.classList.add('hidden');
+      try {
+        const meSnap = await getDoc(doc(db, 'users', user.uid));
+        const me = meSnap.exists() ? { id: user.uid, ...meSnap.data() } : { id: user.uid };
+
+        // Política de membresía
+        let policy = { require: { male: true, female: false } };
+        try {
+          const r = await fetch('/api/membership-policy');
+          policy = await r.json().catch(() => policy);
+        } catch {}
+        const g = String(me.gender || '').toLowerCase();
+        const requiresMembership = (g === 'male' && policy.require.male) || (g === 'female' && policy.require.female);
+        const hasMembership = !!me.membershipActive;
+
+        let qsnap;
+        try {
+          const q = query(collection(db, 'conversations'), where('participants', 'array-contains', user.uid), orderBy('lastMessageAt', 'desc'), limit(50));
+          qsnap = await getDocs(q);
+        } catch (e) {
+          const q = query(collection(db, 'conversations'), where('participants', 'array-contains', user.uid), limit(50));
+          qsnap = await getDocs(q);
+        }
+
+        if (qsnap.empty) {
+          emptyEl.classList.remove('hidden');
+        }
+
+        const hidden = Array.isArray(me.hidden) ? new Set(me.hidden) : new Set();
+        const blocked = Array.isArray(me.blocked) ? new Set(me.blocked) : new Set();
+
+        const items = [];
+        for (const d of qsnap.docs) {
+          const conv = { id: d.id, ...d.data() };
+          const otherId = conv.participants.find(p => p !== user.uid);
+          if (!otherId) continue;
+          if (hidden.has(otherId)) continue;
+          const otherSnap = await getDoc(doc(db, 'users', otherId));
+          const otherUser = otherSnap.exists() ? { id: otherId, ...otherSnap.data() } : { id: otherId };
+          // Si está bloqueado, aún lo mostramos pero sugerimos acción
+          items.push(itemTemplate(conv.id, me, otherUser));
+        }
+        listEl.innerHTML = items.join('');
+
+        // Deshabilitar acciones de chat si la membresía está inactiva y la política lo requiere
+        if (requiresMembership && !hasMembership) {
+          newChatBtn.classList.add('opacity-60','cursor-not-allowed');
+          newChatBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showToast('Necesitas membresía activa para iniciar chats', 'warning');
+            setTimeout(() => { location.href = '/#pricing'; }, 600);
+          });
+          listEl.addEventListener('click', (e) => {
+            const t = e.target;
+            if (!(t instanceof HTMLElement)) return;
+            const a = t.closest('a');
+            if (a && a.getAttribute('href')?.startsWith('/chat.html')) {
+              e.preventDefault();
+              showToast('Tu membresía no está activa. No puedes abrir chats.', 'warning');
+              setTimeout(() => { location.href = '/#pricing'; }, 600);
+            }
+          });
+        }
+
+        listEl.addEventListener('click', async (e) => {
+          const t = e.target;
+          if (!(t instanceof HTMLElement)) return;
+          const action = t.getAttribute('data-action');
+          const uid = t.getAttribute('data-uid');
+          if (!action || !uid) return;
+          if (action === 'block') {
+            await setDoc(doc(db, 'users', user.uid), { blocked: (Array.isArray(me.blocked)? me.blocked: []).concat([uid]) }, { merge: true });
+            showToast('Usuario bloqueado', 'success');
+          } else if (action === 'hide') {
+            await setDoc(doc(db, 'users', user.uid), { hidden: (Array.isArray(me.hidden)? me.hidden: []).concat([uid]) }, { merge: true });
+            showToast('Conversación ocultada', 'info');
+            // Quitar del DOM
+            t.closest('li')?.remove();
+          }
+        });
+
+        // Mantener acción de nuevo chat cuando permitido
+        if (!(requiresMembership && !hasMembership)) {
+          newChatBtn.addEventListener('click', () => {
+            const other = prompt('Ingresa el UID del usuario para chatear');
+            if (!other) return;
+            location.href = `/chat.html?uid=${encodeURIComponent(other)}`;
+          });
+        }
+      } catch (e) {
+        console.error('Error cargando conversaciones', e);
+        showToast('No se pudieron cargar las conversaciones', 'error');
+      }
+    });
+  </script>
+  <script type="module" src="/js/guards.js"></script>
+</body>
+</html>

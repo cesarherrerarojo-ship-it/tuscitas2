@@ -1,0 +1,60 @@
+{
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "docs/**",
+      "*.md",
+      ".github/**",
+      "firestore.rules"
+    ],
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "headers": [
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public,max-age=31536000,immutable"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(png|jpg|jpeg|gif|webp|svg)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public,max-age=31536000,immutable"
+          }
+        ]
+      }
+    ],
+    "redirects": [
+      {
+        "source": "/webapp",
+        "destination": "/webapp/buscar-usuarios.html",
+        "type": 301
+      }
+    ],
+    "rewrites": [
+      { "source": "/api/verify-recaptcha", "function": { "functionId": "verifyRecaptcha", "region": "europe-west1" } },
+      { "source": "/api/health", "function": { "functionId": "health", "region": "europe-west1" } },
+      { "source": "/api/maps-key", "function": { "functionId": "mapsKey", "region": "europe-west1" } },
+      { "source": "/api/membership-policy", "function": { "functionId": "membershipPolicy", "region": "europe-west1" } },
+      { "source": "/api/deposit-policy", "function": { "functionId": "depositPolicy", "region": "europe-west1" } }
+      ,{ "source": "/api/admin/user-phone", "function": { "functionId": "getPrivateUserPhone", "region": "europe-west1" } }
+      ,{ "source": "/api/admin/uid-by-email", "function": { "functionId": "getUidByEmail", "region": "europe-west1" } }
+      ,{ "source": "/api/admin/record-default", "function": { "functionId": "recordDefault", "region": "europe-west1" } }
+      ,{ "source": "/api/reputation/count-accepted", "function": { "functionId": "countAcceptedAppointment", "region": "europe-west1" } }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "functions": {
+    "source": "functions"
+  }
+}
