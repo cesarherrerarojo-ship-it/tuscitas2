@@ -1,302 +1,269 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ============================================
-    // HELPER FUNCTIONS
-    // ============================================
+    // ============ HELPERS con CUSTOM CLAIMS ============
+    function isAuthed() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function role() { return request.auth.token.role != null ? request.auth.token.role : 'regular'; }
+    function gender() { return request.auth.token.gender; }
 
-    // Check if user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
+    function isAdmin() { return isAuthed() && role() == 'admin'; }
+    function isConcierge() { return isAuthed() && role() == 'concierge'; }
+    function isMale() { return isAuthed() && gender() == 'masculino'; }
+    function isFemale() { return isAuthed() && gender() == 'femenino'; }
 
-    // Check if user is the owner of the document
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    // Get current user data
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    // Check if user has active membership (male users only)
-    function hasActiveMembership() {
-      let userData = getUserData();
-      return userData.gender == 'femenino' ||
-             (userData.gender == 'masculino' && userData.hasActiveSubscription == true);
-    }
-
-    // Check if user has insurance (male users only)
-    function hasInsurance() {
-      let userData = getUserData();
-      return userData.gender == 'femenino' ||
-             (userData.gender == 'masculino' && userData.hasAntiGhostingInsurance == true);
-    }
-
-    // Check if genders are opposite (heterosexual matching)
-    function isOppositeGender(targetUserId) {
-      let currentUserGender = getUserData().gender;
-      let targetUserGender = get(/databases/$(database)/documents/users/$(targetUserId)).data.gender;
-
-      return (currentUserGender == 'masculino' && targetUserGender == 'femenino') ||
-             (currentUserGender == 'femenino' && targetUserGender == 'masculino');
-    }
-
-    // Check if user is admin
-    function isAdmin() {
-      return isAuthenticated() && getUserData().role == 'admin';
-    }
-
-    // ============================================
-    // USERS COLLECTION
-    // ============================================
-
+    // ============ USERS ============
     match /users/{userId} {
-      // Read: User can read their own profile OR opposite gender profiles (heterosexual only)
-      allow read: if isAuthenticated() &&
-                     (isOwner(userId) ||
-                      isAdmin() ||
-                      isOppositeGender(userId));
+      // Creación: Durante registro inicial
+      allow create: if isAuthed()
+                    && uid() == userId
+                    && request.resource.data.gender in ['masculino','femenino']
+                    && request.resource.data.userRole in ['regular']  // Solo pueden crear cuenta regular
+                    && request.resource.data.keys().hasAll(['alias','gender','userRole','birthDate','email','createdAt']);
 
-      // Create: User can create their own profile during registration
-      allow create: if isAuthenticated() &&
-                       isOwner(userId) &&
-                       request.resource.data.email == request.auth.token.email;
+      // Lectura: Usuarios autenticados pueden ver perfiles
+      allow read: if isAuthed();
 
-      // Update: User can only update their own profile
-      // Cannot change: email, uid, createdAt, role
-      allow update: if isAuthenticated() &&
-                       isOwner(userId) &&
-                       request.resource.data.email == resource.data.email &&
-                       request.resource.data.uid == resource.data.uid &&
-                       request.resource.data.createdAt == resource.data.createdAt;
+      // Actualización: El dueño puede actualizar su perfil (menos userRole que solo admin cambia)
+      allow update: if isAuthed() && (
+        // Usuario actualizando su propio perfil
+        (uid() == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userRole','email','createdAt'])) ||
+        // Admin puede cambiar userRole y otros campos
+        isAdmin()
+      );
 
-      // Delete: Users can delete their own account OR admin
-      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      // Borrado: Solo admin
+      allow delete: if isAdmin();
     }
 
-    // ============================================
-    // CONVERSATIONS COLLECTION
-    // ============================================
+    // ============ VIP EVENTS (Concierge System) ============
+    match /vip_events/{eventId} {
+      // Lectura: Solo mujeres, concierges y admins
+      allow read: if isAuthed() && (isFemale() || isConcierge() || isAdmin());
 
+      // Creación: Solo concierges aprobados
+      allow create: if isConcierge()
+                    && request.resource.data.conciergeId == uid()
+                    && request.resource.data.status == 'published';
+
+      // Actualización: Solo el concierge dueño del evento o admin
+      allow update: if isAuthed() && (
+        (isConcierge() && resource.data.conciergeId == uid()) ||
+        isAdmin()
+      );
+
+      // Borrado: Solo el concierge dueño o admin
+      allow delete: if isAuthed() && (
+        (isConcierge() && resource.data.conciergeId == uid()) ||
+        isAdmin()
+      );
+    }
+
+    // ============ VIP APPLICATIONS ============
+    match /vip_applications/{applicationId} {
+      // Lectura:
+      // - La mujer que aplicó
+      // - El concierge del evento
+      // - Admins
+      allow read: if isAuthed() && (
+        resource.data.userId == uid() ||
+        (isConcierge() && get(/databases/$(database)/documents/vip_events/$(resource.data.eventId)).data.conciergeId == uid()) ||
+        isAdmin()
+      );
+
+      // Creación: Solo mujeres aplicando a eventos
+      allow create: if isFemale()
+                    && request.resource.data.userId == uid()
+                    && request.resource.data.status == 'pending'
+                    && exists(/databases/$(database)/documents/vip_events/$(request.resource.data.eventId));
+
+      // Actualización: El concierge del evento puede cambiar status a 'selected' o 'rejected'
+      allow update: if isAuthed() && (
+        (isConcierge() &&
+         get(/databases/$(database)/documents/vip_events/$(resource.data.eventId)).data.conciergeId == uid() &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt']) &&
+         request.resource.data.status in ['selected','rejected']) ||
+        isAdmin()
+      );
+
+      // Borrado: Solo admin
+      allow delete: if isAdmin();
+    }
+
+    // ============ MATCHES (Date Requests) ============
+    match /matches/{matchId} {
+      // Lectura: El que envió o el que recibió
+      allow read: if isAuthed() && (
+        resource.data.senderId == uid() ||
+        resource.data.receiverId == uid() ||
+        isAdmin()
+      );
+
+      // Creación: Usuario autenticado enviando solicitud
+      allow create: if isAuthed()
+                    && request.resource.data.senderId == uid()
+                    && request.resource.data.status == 'pending';
+
+      // Actualización: El receptor puede aceptar/rechazar
+      allow update: if isAuthed() && (
+        (resource.data.receiverId == uid() &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt']) &&
+         request.resource.data.status in ['accepted','rejected']) ||
+        isAdmin()
+      );
+
+      // Borrado: Solo quien envió o admin
+      allow delete: if isAuthed() && (
+        resource.data.senderId == uid() ||
+        isAdmin()
+      );
+    }
+
+    // ============ CONVERSATIONS ============
     match /conversations/{conversationId} {
-      // Read: Only participants can read conversation
-      allow read: if isAuthenticated() &&
-                     request.auth.uid in resource.data.participants;
+      // Lectura: Participantes, admin, concierge
+      allow read: if isAuthed() && (
+        uid() in resource.data.participants ||
+        isAdmin() ||
+        isConcierge()
+      );
 
-      // Create: Both users must have active membership (males only)
-      // Must be between opposite genders
-      allow create: if isAuthenticated() &&
-                       hasActiveMembership() &&
-                       request.auth.uid in request.resource.data.participants &&
-                       request.resource.data.participants.size() == 2 &&
-                       isOppositeGender(request.resource.data.participants[0] == request.auth.uid ?
-                                       request.resource.data.participants[1] :
-                                       request.resource.data.participants[0]);
+      // Creación: El creador debe estar en participants
+      allow create: if isAuthed()
+                    && request.resource.data.participants is list
+                    && uid() in request.resource.data.participants;
 
-      // Update: Only participants can update
-      allow update: if isAuthenticated() &&
-                       request.auth.uid in resource.data.participants &&
-                       hasActiveMembership();
+      // Actualización: Participantes, admin, concierge
+      allow update: if isAuthed() && (
+        uid() in resource.data.participants ||
+        isAdmin() ||
+        isConcierge()
+      );
 
-      // Delete: Participants can soft-delete by hiding, admin can hard-delete
-      allow delete: if isAuthenticated() &&
-                       (request.auth.uid in resource.data.participants || isAdmin());
+      // Borrado: Solo admin
+      allow delete: if isAdmin();
 
-      // ============================================
-      // MESSAGES SUBCOLLECTION
-      // ============================================
-
+      // Mensajes (si usas subcolección)
       match /messages/{messageId} {
-        // Read: Only conversation participants
-        allow read: if isAuthenticated() &&
-                       request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+        allow read: if isAuthed() && (
+          uid() in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants ||
+          isAdmin() ||
+          isConcierge()
+        );
 
-        // Create: Must have active membership and be a participant
-        allow create: if isAuthenticated() &&
-                         hasActiveMembership() &&
-                         request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants &&
-                         request.resource.data.senderId == request.auth.uid;
+        allow create: if isAuthed() &&
+          uid() in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants &&
+          request.resource.data.senderId == uid();
 
-        // Update: Only sender can update their own messages (for read receipts, etc.)
-        allow update: if isAuthenticated() &&
-                         request.auth.uid == resource.data.senderId;
-
-        // Delete: Sender or admin
-        allow delete: if isAuthenticated() &&
-                         (request.auth.uid == resource.data.senderId || isAdmin());
+        allow update, delete: if isAdmin();
       }
     }
 
-    // ============================================
-    // MATCH REQUESTS COLLECTION
-    // ============================================
-
-    match /match_requests/{requestId} {
-      // Read: Sender, receiver, or admin
-      allow read: if isAuthenticated() &&
-                     (isOwner(resource.data.senderId) ||
-                      isOwner(resource.data.receiverId) ||
-                      isAdmin());
-
-      // Create: Must have active membership and be between opposite genders
-      allow create: if isAuthenticated() &&
-                       hasActiveMembership() &&
-                       request.resource.data.senderId == request.auth.uid &&
-                       isOppositeGender(request.resource.data.receiverId);
-
-      // Update: Receiver can accept/reject, sender can cancel
-      allow update: if isAuthenticated() &&
-                       (isOwner(resource.data.receiverId) ||
-                        isOwner(resource.data.senderId));
-
-      // Delete: Sender, receiver, or admin
-      allow delete: if isAuthenticated() &&
-                       (isOwner(resource.data.senderId) ||
-                        isOwner(resource.data.receiverId) ||
-                        isAdmin());
-    }
-
-    // ============================================
-    // APPOINTMENTS COLLECTION
-    // ============================================
-
-    match /appointments/{appointmentId} {
-      // Read: Participants or admin
-      allow read: if isAuthenticated() &&
-                     (request.auth.uid in resource.data.participants || isAdmin());
-
-      // Create: Must have active membership AND insurance (€120 deposit)
-      // Must be between opposite genders
-      allow create: if isAuthenticated() &&
-                       hasActiveMembership() &&
-                       hasInsurance() &&
-                       request.auth.uid in request.resource.data.participants &&
-                       request.resource.data.participants.size() == 2 &&
-                       isOppositeGender(request.resource.data.participants[0] == request.auth.uid ?
-                                       request.resource.data.participants[1] :
-                                       request.resource.data.participants[0]);
-
-      // Update: Participants can update, must maintain insurance requirement
-      allow update: if isAuthenticated() &&
-                       request.auth.uid in resource.data.participants &&
-                       hasInsurance();
-
-      // Delete: Admin only (appointments shouldn't be deleted, only canceled)
-      allow delete: if isAdmin();
-    }
-
-    // ============================================
-    // DATE PROPOSALS SUBCOLLECTION (within conversations)
-    // ============================================
-
-    match /conversations/{conversationId}/date_proposals/{proposalId} {
-      // Read: Conversation participants
-      allow read: if isAuthenticated() &&
-                     request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
-
-      // Create: Must have insurance to propose dates
-      allow create: if isAuthenticated() &&
-                       hasInsurance() &&
-                       request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants &&
-                       request.resource.data.proposerId == request.auth.uid;
-
-      // Update: Participants can update (accept/reject)
-      allow update: if isAuthenticated() &&
-                       request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
-
-      // Delete: Proposer or admin
-      allow delete: if isAuthenticated() &&
-                       (request.auth.uid == resource.data.proposerId || isAdmin());
-    }
-
-    // ============================================
-    // SUBSCRIPTIONS COLLECTION
-    // ============================================
-
-    match /subscriptions/{subscriptionId} {
-      // Read: Owner or admin
-      allow read: if isAuthenticated() &&
-                     (isOwner(resource.data.userId) || isAdmin());
-
-      // Create: System only (via Cloud Functions/webhooks)
-      allow create: if false;
-
-      // Update: System only
-      allow update: if false;
-
-      // Delete: System only
-      allow delete: if false;
-    }
-
-    // ============================================
-    // INSURANCE PAYMENTS COLLECTION
-    // ============================================
-
-    match /insurance_payments/{paymentId} {
-      // Read: Owner or admin
-      allow read: if isAuthenticated() &&
-                     (isOwner(resource.data.userId) || isAdmin());
-
-      // Create: System only (via Cloud Functions/webhooks)
-      allow create: if false;
-
-      // Update: System only
-      allow update: if false;
-
-      // Delete: System only
-      allow delete: if false;
-    }
-
-    // ============================================
-    // REPORTS COLLECTION
-    // ============================================
-
+    // ============ REPORTS ============
     match /reports/{reportId} {
-      // Read: Reporter, admin only
-      allow read: if isAuthenticated() &&
-                     (isOwner(resource.data.reporterId) || isAdmin());
+      // Lectura: Solo admins y el que reportó
+      allow read: if isAuthed() && (
+        resource.data.reporterId == uid() ||
+        isAdmin()
+      );
 
-      // Create: Any authenticated user can report
-      allow create: if isAuthenticated() &&
-                       request.resource.data.reporterId == request.auth.uid;
+      // Creación: Usuario autenticado reportando
+      allow create: if isAuthed()
+                    && request.resource.data.reporterId == uid()
+                    && request.resource.data.status == 'pending';
 
-      // Update: Admin only
+      // Actualización: Solo admin (para cambiar status a 'reviewed', 'resolved', etc.)
       allow update: if isAdmin();
 
-      // Delete: Admin only
+      // Borrado: Solo admin
       allow delete: if isAdmin();
     }
 
-    // ============================================
-    // BLOCKED USERS COLLECTION
-    // ============================================
+    // ============ SOS ALERTS ============
+    match /sos_alerts/{alertId} {
+      // Lectura: Solo admins y el usuario que activó SOS
+      allow read: if isAuthed() && (
+        resource.data.userId == uid() ||
+        isAdmin()
+      );
 
+      // Creación: Usuario en emergencia
+      allow create: if isAuthed()
+                    && request.resource.data.userId == uid()
+                    && request.resource.data.status == 'active';
+
+      // Actualización: El usuario puede desactivar, admin puede todo
+      allow update: if isAuthed() && (
+        (resource.data.userId == uid() &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','deactivatedAt']) &&
+         request.resource.data.status == 'deactivated') ||
+        isAdmin()
+      );
+
+      // Borrado: Solo admin
+      allow delete: if isAdmin();
+    }
+
+    // ============ PAYMENTS / SUBSCRIPTIONS ============
+    match /subscriptions/{subscriptionId} {
+      // Lectura: Solo el dueño y admin
+      allow read: if isAuthed() && (
+        resource.data.userId == uid() ||
+        isAdmin()
+      );
+
+      // Creación: Backend o admin (cuando procesa pago con Stripe)
+      allow create: if isAdmin();
+
+      // Actualización: Backend o admin (cuando actualiza status)
+      allow update: if isAdmin();
+
+      // Borrado: Solo admin
+      allow delete: if isAdmin();
+    }
+
+    // ============ INSURANCE (Anti-Ghosting) ============
+    match /insurances/{insuranceId} {
+      // Lectura: Solo el dueño y admin
+      allow read: if isAuthed() && (
+        resource.data.userId == uid() ||
+        isAdmin()
+      );
+
+      // Creación/Actualización: Backend o admin
+      allow create, update: if isAdmin();
+
+      // Borrado: Solo admin
+      allow delete: if isAdmin();
+    }
+
+    // ============ BLOCKED USERS ============
     match /users/{userId}/blocked_users/{blockedUserId} {
-      // Read: Owner only
-      allow read: if isAuthenticated() && isOwner(userId);
+      // Lectura: Solo el dueño
+      allow read: if isAuthed() && uid() == userId;
 
-      // Create: Owner can block users
-      allow create: if isAuthenticated() && isOwner(userId);
+      // Creación: El usuario puede bloquear
+      allow create: if isAuthed() && uid() == userId;
 
-      // Delete: Owner can unblock users
-      allow delete: if isAuthenticated() && isOwner(userId);
+      // Borrado: El usuario puede desbloquear
+      allow delete: if isAuthed() && uid() == userId;
     }
 
-    // ============================================
-    // ADMIN COLLECTIONS
-    // ============================================
+    // ============ ADMIN LOGS ============
+    match /admin_logs/{logId} {
+      // Solo lectura para admins
+      allow read: if isAdmin();
 
-    match /admin/{document=**} {
-      allow read, write: if isAdmin();
+      // Solo creación por admin (o backend con privilegios admin)
+      allow create: if isAdmin();
+
+      // No se pueden modificar ni borrar logs
+      allow update, delete: if false;
     }
 
-    // ============================================
-    // DENY ALL OTHER COLLECTIONS
-    // ============================================
-
+    // ============ DEFAULT DENY ============
     match /{document=**} {
       allow read, write: if false;
     }

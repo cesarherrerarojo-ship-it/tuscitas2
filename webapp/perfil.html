@@ -799,7 +799,8 @@
 
         // Upload avatar photo if selected
         if (photoFile) {
-          const storageRef = ref(storage, `profile_photos/${currentUser.uid}/avatar`);
+          // Nueva estructura: profile_photos/{gender}/{userId}/{filename}
+          const storageRef = ref(storage, `profile_photos/${gender}/${currentUser.uid}/avatar`);
           await uploadBytes(storageRef, photoFile);
           photoURL = await getDownloadURL(storageRef);
           console.log('Avatar uploaded:', photoURL);
@@ -809,7 +810,8 @@
         const galleryPhotos = currentUserData.galleryPhotos || [];
         for (let i = 0; i < 5; i++) {
           if (galleryFiles[i]) {
-            const storageRef = ref(storage, `profile_photos/${currentUser.uid}/gallery_${i + 1}`);
+            // Nueva estructura: profile_photos/{gender}/{userId}/{filename}
+            const storageRef = ref(storage, `profile_photos/${gender}/${currentUser.uid}/gallery_${i + 1}`);
             await uploadBytes(storageRef, galleryFiles[i]);
             const url = await getDownloadURL(storageRef);
             galleryPhotos[i] = url;
