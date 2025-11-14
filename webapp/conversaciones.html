@@ -202,6 +202,7 @@
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { showToast, calculateDistance } from './js/utils.js';
     import { loadTheme } from './js/theme.js';
+    import { initializeNotifications } from './js/notifications.js';
 
     let currentUser = null;
     let currentUserData = null;
@@ -215,6 +216,16 @@
         currentUser = user;
         await loadCurrentUserData();
         loadConversations();
+
+        // Initialize push notifications
+        try {
+          const notificationsEnabled = await initializeNotifications();
+          if (notificationsEnabled) {
+            console.log('✅ Push notifications initialized successfully');
+          }
+        } catch (error) {
+          console.error('Error initializing push notifications:', error);
+        }
       } else {
         window.location.href = '/login.html';
       }

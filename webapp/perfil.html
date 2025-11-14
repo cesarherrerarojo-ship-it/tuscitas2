@@ -497,6 +497,7 @@
     import { themes, applyTheme, loadTheme, saveThemeToFirestore } from './js/theme.js';
     import { logger } from './js/logger.js';
     import { setupGlobalErrorHandling } from './js/error-handler.js';
+    import { initializeNotifications } from './js/notifications.js';
 
     // Setup global error handling
     setupGlobalErrorHandling();
@@ -513,6 +514,18 @@
         currentUser = user;
         await loadUserProfile();
         document.getElementById('loadingOverlay').classList.add('hidden');
+
+        // Initialize push notifications
+        try {
+          const notificationsEnabled = await initializeNotifications();
+          if (notificationsEnabled) {
+            console.log('✅ Push notifications initialized successfully');
+          } else {
+            console.log('ℹ️ Push notifications not available or permission denied');
+          }
+        } catch (error) {
+          console.error('Error initializing push notifications:', error);
+        }
       } else {
         window.location.href = '/login.html';
       }
