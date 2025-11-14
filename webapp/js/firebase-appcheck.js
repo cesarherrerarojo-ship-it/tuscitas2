@@ -13,26 +13,29 @@ import app from './firebase-config.js';
 const RECAPTCHA_ENTERPRISE_SITE_KEY = '6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2';
 
 // ============================================================================
-// 1. MODO DEBUG PARA DESARROLLO LOCAL
+// 1. DETECTAR ENTORNO
 // ============================================================================
 const isDevelopment = location.hostname === "localhost" ||
                      location.hostname === "127.0.0.1" ||
                      location.hostname.includes("192.168.");
 
-if (isDevelopment) {
-  // Activar debug mode para obtener debug token
-  self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+// Dominios configurados en reCAPTCHA Enterprise
+// IMPORTANTE: Solo se inicializará App Check si el dominio está aquí
+const ALLOWED_DOMAINS = [
+  'localhost',
+  '127.0.0.1',
+  'tuscitasseguras-2d1a6.web.app',
+  'tuscitasseguras-2d1a6.firebaseapp.com'
+  // TODO: Añadir 'tucitasegura.com' cuando esté configurado en reCAPTCHA Enterprise
+];
 
-  console.log('🔧 App Check Debug Mode ACTIVADO');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('⚠️  IMPORTANTE: Copia el debug token que aparecerá abajo');
-  console.log('📝 Pasos:');
-  console.log('   1. Copia el token de la consola (aparece automáticamente)');
-  console.log('   2. Ve a Firebase Console → App Check → Apps → Debug tokens');
-  console.log('   3. Haz clic en "Add debug token"');
-  console.log('   4. Pega el token y guarda');
-  console.log('   5. Recarga esta página');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+const isAllowedDomain = ALLOWED_DOMAINS.some(domain =>
+  location.hostname === domain || location.hostname.includes(domain)
+);
+
+if (isDevelopment) {
+  console.log('🔧 Modo DESARROLLO detectado');
+  console.log('💡 App Check se desactivará para evitar errores');
 }
 
 // ============================================================================
@@ -40,14 +43,33 @@ if (isDevelopment) {
 // ============================================================================
 let appCheck = null;
 
-// MODO DESARROLLO: Desactivar App Check en localhost
-if (isDevelopment) {
+// Solo inicializar App Check si el dominio está permitido
+if (!isAllowedDomain) {
+  console.warn('⚠️  App Check DESACTIVADO');
+  console.warn(`📍 Dominio actual: ${location.hostname}`);
+  console.warn('');
+  console.warn('🔧 Para activar App Check en este dominio:');
+  console.warn('');
+  console.warn('1. Ve a Google Cloud Console:');
+  console.warn('   https://console.cloud.google.com/security/recaptcha?project=tuscitasseguras-2d1a6');
+  console.warn('');
+  console.warn('2. Click en la key: 6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2');
+  console.warn('');
+  console.warn(`3. En "Domains", añade: ${location.hostname}`);
+  console.warn('');
+  console.warn('4. Guarda y espera 2-3 minutos');
+  console.warn('');
+  console.warn('5. Añade el dominio a ALLOWED_DOMAINS en firebase-appcheck.js');
+  console.warn('');
+  console.warn('💡 Mientras tanto, la app funcionará sin App Check');
+  console.warn('');
+} else if (isDevelopment) {
   console.log('⚠️  App Check DESACTIVADO en modo desarrollo');
   console.log('💡 La app funcionará sin App Check en localhost');
   console.log('✅ Las notificaciones funcionarán sin problemas');
   // No inicializar App Check en desarrollo
 } else {
-  // SOLO en producción
+  // Dominio permitido y en producción
   try {
     // Validar site key
     if (!RECAPTCHA_ENTERPRISE_SITE_KEY || RECAPTCHA_ENTERPRISE_SITE_KEY === 'YOUR_RECAPTCHA_SITE_KEY') {
@@ -55,23 +77,18 @@ if (isDevelopment) {
     }
 
     // Inicializar App Check con reCAPTCHA ENTERPRISE
-    // NOTA: Usamos ReCaptchaEnterpriseProvider, NO ReCaptchaV3Provider
+    console.log('🔐 Inicializando App Check...');
     appCheck = initializeAppCheck(app, {
       provider: new ReCaptchaEnterpriseProvider(RECAPTCHA_ENTERPRISE_SITE_KEY),
       isTokenAutoRefreshEnabled: true // Auto-refresh tokens antes de expirar
     });
+
+    console.log('✅ App Check inicializado correctamente');
+    console.log(`📍 Modo: PRODUCCIÓN (${location.hostname})`);
+    console.log('🔑 Provider: reCAPTCHA Enterprise');
   } catch (error) {
     console.error('❌ Error inicializando App Check:', error.message);
-
-    if (error.message.includes('site key')) {
-      console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.warn('📝 Para verificar reCAPTCHA Enterprise site key:');
-      console.warn('   1. https://console.cloud.google.com/security/recaptcha');
-      console.warn('   2. Selecciona proyecto: tuscitasseguras-2d1a6');
-      console.warn('   3. Verifica que la key existe y es tipo "Enterprise"');
-      console.warn('   4. Verifica que los dominios incluyen: localhost, 127.0.0.1');
-      console.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    }
+    console.warn('💡 La app continuará sin App Check');
   }
 }
 
