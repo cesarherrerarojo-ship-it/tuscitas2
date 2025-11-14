@@ -7,7 +7,22 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <!-- Google Maps API -->
+
+  <!--
+    ⚠️ CRITICAL: Google Maps API Configuration Required
+
+    ACTION NEEDED: Replace YOUR_GOOGLE_MAPS_API_KEY with your actual API key
+
+    Documentation: See /GOOGLE_MAPS_API_SETUP.md for complete setup instructions
+
+    Quick setup:
+    1. Go to https://console.cloud.google.com/
+    2. Enable Maps JavaScript API + Places API
+    3. Create API key with HTTP referrer restrictions
+    4. Replace YOUR_GOOGLE_MAPS_API_KEY below
+
+    Status: 🔴 NOT CONFIGURED - Map will NOT work without valid API key
+  -->
   <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places,geometry"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }

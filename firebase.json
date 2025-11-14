@@ -19,11 +19,19 @@
     ]
   },
   "hosting": {
-    "public": "public",
+    "public": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "functions/**",
+      "backend/**",
+      "*.md",
+      "firestore.rules",
+      "firebase-storage.rules",
+      "firestore.indexes.json",
+      ".firebaserc",
+      ".gitignore"
     ],
     "rewrites": [
       {
