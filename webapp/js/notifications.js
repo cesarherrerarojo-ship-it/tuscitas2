@@ -5,11 +5,8 @@
 
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from './firebase-config.js';
+import { auth, db, VAPID_PUBLIC_KEY } from './firebase-config.js';
 import { showToast } from './utils.js';
-
-// FCM Configuration
-const VAPID_KEY = 'BNxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'; // TODO: Get from Firebase Console
 
 let messaging = null;
 let currentToken = null;
@@ -105,7 +102,7 @@ async function getAndSaveFCMToken() {
     }
 
     // Get FCM token
-    const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+    const token = await getToken(messaging, { vapidKey: VAPID_PUBLIC_KEY });
 
     if (token) {
       console.log('FCM Token obtained:', token.substring(0, 20) + '...');

@@ -495,6 +495,11 @@
     import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
     import { showToast } from './js/utils.js';
     import { themes, applyTheme, loadTheme, saveThemeToFirestore } from './js/theme.js';
+    import { logger } from './js/logger.js';
+    import { setupGlobalErrorHandling } from './js/error-handler.js';
+
+    // Setup global error handling
+    setupGlobalErrorHandling();
 
     let currentUser = null;
     let currentUserData = null;
@@ -575,7 +580,7 @@
           updateBioCounter();
         }
       } catch (error) {
-        console.error('Error loading profile:', error);
+        logger.error('Error loading profile:', error);
         showToast('Error al cargar el perfil', 'error');
       }
     }
@@ -807,7 +812,7 @@
           const storageRef = ref(storage, `profile_photos/${gender}/${currentUser.uid}/avatar`);
           await uploadBytes(storageRef, photoFile);
           photoURL = await getDownloadURL(storageRef);
-          console.log('Avatar uploaded:', photoURL);
+          logger.debug('Avatar uploaded:', photoURL);
         }
 
         // Upload gallery photos
@@ -819,7 +824,7 @@
             await uploadBytes(storageRef, galleryFiles[i]);
             const url = await getDownloadURL(storageRef);
             galleryPhotos[i] = url;
-            console.log(`Gallery photo ${i + 1} uploaded:`, url);
+            logger.debug(`Gallery photo ${i + 1} uploaded:`, url);
           }
         }
 
@@ -842,7 +847,7 @@
           updatedAt: serverTimestamp()
         });
 
-        console.log('Profile updated successfully');
+        logger.info('Profile updated successfully');
 
         // Show success modal
         document.getElementById('successModal').classList.remove('hidden');
@@ -851,7 +856,7 @@
         photoFile = null;
 
       } catch (error) {
-        console.error('Error saving profile:', error);
+        logger.error('Error saving profile:', error);
         showToast('Error al guardar los cambios', 'error');
       } finally {
         saveButton.disabled = false;
@@ -898,7 +903,7 @@
         // await signOut(auth);
         // window.location.href = '/webapp/login.html';
       } catch (error) {
-        console.error('Error deleting account:', error);
+        logger.error('Error deleting account:', error);
         showToast('Error al eliminar la cuenta', 'error');
       }
     }

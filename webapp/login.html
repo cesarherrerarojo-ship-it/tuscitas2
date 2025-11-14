@@ -178,6 +178,7 @@
   <script type="module">
     import { auth, db } from './js/firebase-config.js';
     import './js/firebase-appcheck.js';
+    import { logger } from './js/logger.js';
     import {
       signInWithEmailAndPassword,
       sendPasswordResetEmail,
@@ -263,7 +264,7 @@
         await sendPasswordResetEmail(auth, email);
         showToast('Correo de recuperación enviado. Revisa tu bandeja de entrada.', 'success');
       } catch (error) {
-        console.error('Error sending password reset:', error);
+        logger.error('Error sending password reset:', error);
         if (error.code === 'auth/user-not-found') {
           showToast('No existe una cuenta con este correo electrónico', 'error');
         } else {
@@ -322,7 +323,7 @@
         }, 1000);
 
       } catch (error) {
-        console.error('Login error:', error);
+        logger.error('Login error:', error);
 
         let errorMessage = 'Error al iniciar sesión';
 

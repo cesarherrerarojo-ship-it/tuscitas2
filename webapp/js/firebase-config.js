@@ -23,5 +23,29 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
+// ============================================================================
+// FIREBASE CLOUD MESSAGING (FCM) CONFIGURATION
+// ============================================================================
+
+/**
+ * VAPID Public Key for Push Notifications
+ *
+ * ⚠️ CONFIGURATION REQUIRED:
+ * 1. Go to Firebase Console → Project Settings
+ * 2. Navigate to "Cloud Messaging" tab
+ * 3. Scroll to "Web Push certificates"
+ * 4. Click "Generate key pair" if not already generated
+ * 5. Copy the public key and replace the value below
+ *
+ * NOTE: This is a PUBLIC key - safe to include in client code
+ * The key starts with "B" and is 88 characters long
+ *
+ * @example
+ * export const VAPID_PUBLIC_KEY = 'BNxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+ */
+export const VAPID_PUBLIC_KEY = 'BNxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+// TODO: Replace with your actual VAPID key from Firebase Console
+// See: https://console.firebase.google.com/project/tuscitasseguras-2d1a6/settings/cloudmessaging
+
 // Export app for potential future use
 export default app;
