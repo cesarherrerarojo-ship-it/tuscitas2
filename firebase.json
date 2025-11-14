@@ -26,12 +26,15 @@
       "**/node_modules/**",
       "functions/**",
       "backend/**",
+      "src/**",
       "*.md",
       "firestore.rules",
       "firebase-storage.rules",
       "firestore.indexes.json",
       ".firebaserc",
-      ".gitignore"
+      ".gitignore",
+      "tailwind.config.js",
+      "postcss.config.js"
     ],
     "headers": [
       {
