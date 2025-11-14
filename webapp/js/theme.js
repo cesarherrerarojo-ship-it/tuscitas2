@@ -82,6 +82,20 @@ export const themes = {
       middle: 'rgba(255, 153, 172, 0.3)',
       end: 'rgba(255, 77, 125, 0.2)'
     }
+  },
+  dark: {
+    name: 'Modo Oscuro',
+    icon: '🌙',
+    gradient: 'linear-gradient(135deg, #2d3748 0%, #1a202c 100%)',
+    primary: '#4a5568',
+    secondary: '#2d3748',
+    accent: '#667eea',
+    background: {
+      start: 'rgba(45, 55, 72, 0.4)',
+      middle: 'rgba(26, 32, 44, 0.4)',
+      end: 'rgba(74, 85, 104, 0.3)'
+    },
+    isDark: true  // Flag to identify dark mode
   }
 };
 
@@ -108,9 +122,13 @@ export function applyTheme(themeName) {
     existingStyle.remove();
   }
 
+  // Check if dark mode
+  const isDarkMode = theme.isDark || false;
+
   style.textContent = `
     body {
       background: ${theme.gradient} !important;
+      ${isDarkMode ? 'color: #e2e8f0 !important;' : ''}
     }
 
     body::before {
@@ -160,6 +178,42 @@ export function applyTheme(themeName) {
     .gradient-button:hover {
       box-shadow: 0 10px 25px ${theme.primary}66 !important;
     }
+
+    /* Dark mode specific adjustments */
+    ${isDarkMode ? `
+      .glass {
+        background: rgba(45, 55, 72, 0.7) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: #e2e8f0 !important;
+      }
+
+      .glass h1, .glass h2, .glass h3, .glass h4, .glass h5, .glass h6 {
+        color: #f7fafc !important;
+      }
+
+      .glass p, .glass span, .glass div {
+        color: #e2e8f0 !important;
+      }
+
+      input, textarea, select {
+        background: rgba(26, 32, 44, 0.6) !important;
+        color: #e2e8f0 !important;
+        border-color: rgba(255, 255, 255, 0.2) !important;
+      }
+
+      input::placeholder, textarea::placeholder {
+        color: #a0aec0 !important;
+      }
+
+      .text-gray-600, .text-gray-700, .text-gray-800 {
+        color: #cbd5e0 !important;
+      }
+
+      .bg-white {
+        background: rgba(45, 55, 72, 0.6) !important;
+        color: #e2e8f0 !important;
+      }
+    ` : ''}
   `;
 
   document.head.appendChild(style);

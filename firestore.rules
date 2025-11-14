@@ -421,6 +421,119 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // ============ REFERRALS ============
+    match /referrals/{referralId} {
+      // Lectura: El referidor y el referido pueden ver sus referidos
+      allow read: if isAuthed() && (
+        resource.data.referrerId == uid() ||
+        resource.data.referredId == uid() ||
+        isAdmin()
+      );
+
+      // Creación: Solo cuando alguien se registra con un código
+      allow create: if isAuthed() &&
+                       request.resource.data.referredId == uid() &&
+                       request.resource.data.keys().hasAll(['referrerId', 'referredId', 'status', 'createdAt']) &&
+                       request.resource.data.status == 'pending';
+
+      // Actualización: Solo para actualizar estado (completado, activo, etc.)
+      allow update: if isAuthed() && (
+        (resource.data.referrerId == uid() &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+        isAdmin()
+      );
+
+      // Borrado: Solo admin
+      allow delete: if isAdmin();
+    }
+
+    // ============ BADGES (Achievements) ============
+    match /badges/{badgeId} {
+      // Lectura: Todos los usuarios pueden ver los badges disponibles
+      allow read: if isAuthed();
+
+      // Creación/Actualización/Borrado: Solo admin
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ============ USER BADGES (Earned) ============
+    match /users/{userId}/earned_badges/{badgeId} {
+      // Lectura: El usuario y admin
+      allow read: if isAuthed() && (
+        uid() == userId ||
+        isAdmin()
+      );
+
+      // Creación: Solo Cloud Functions o admin (cuando se cumple logro)
+      allow create: if isAdmin();
+
+      // No se pueden modificar ni borrar badges ganados
+      allow update, delete: if false;
+    }
+
+    // ============ ANALYTICS EVENTS ============
+    match /analytics_events/{eventId} {
+      // Creación: Usuarios pueden crear eventos de analytics
+      allow create: if isAuthed() &&
+                       request.resource.data.userId == uid();
+
+      // Lectura: Solo admin
+      allow read: if isAdmin();
+
+      // No se pueden modificar ni borrar eventos
+      allow update, delete: if false;
+    }
+
+    // ============ PUSH TOKENS ============
+    match /push_tokens/{tokenId} {
+      // Lectura/Escritura: Solo el dueño del token
+      allow read, write: if isAuthed() &&
+                            request.resource.data.userId == uid();
+
+      // Admin puede leer todos
+      allow read: if isAdmin();
+    }
+
+    // ============ IDENTITY VERIFICATION ============
+    match /identity_verifications/{verificationId} {
+      // Lectura: Solo el usuario y admin
+      allow read: if isAuthed() && (
+        resource.data.userId == uid() ||
+        isAdmin()
+      );
+
+      // Creación: El usuario puede iniciar verificación
+      allow create: if isAuthed() &&
+                       request.resource.data.userId == uid() &&
+                       request.resource.data.status == 'pending';
+
+      // Actualización: Solo admin (para aprobar/rechazar)
+      allow update: if isAdmin();
+
+      // Borrado: Solo admin
+      allow delete: if isAdmin();
+    }
+
+    // ============ VIDEO CHAT SESSIONS ============
+    match /video_sessions/{sessionId} {
+      // Lectura: Solo los participantes
+      allow read: if isAuthed() &&
+                     uid() in resource.data.participants;
+
+      // Creación: Los participantes pueden crear sesión
+      allow create: if isAuthed() &&
+                       uid() in request.resource.data.participants &&
+                       request.resource.data.participants.size() == 2;
+
+      // Actualización: Los participantes pueden actualizar
+      allow update: if isAuthed() &&
+                       uid() in resource.data.participants;
+
+      // Borrado: Los participantes pueden eliminar
+      allow delete: if isAuthed() &&
+                       uid() in resource.data.participants;
+    }
+
     // ============ DEFAULT DENY ============
     match /{document=**} {
       allow read, write: if false;
