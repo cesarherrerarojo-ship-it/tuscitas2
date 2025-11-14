@@ -1,126 +1,177 @@
-# 🔥 QUICK FIX: Firebase Auth 401 Error
+# 🔥 QUICK FIX: Firebase Auth 401 Error + App Check Throttling
 
-**Problem:** User registration fails with 401 Unauthorized error
+**Problema:** Registro de usuarios falla con error 401 Unauthorized + throttling de App Check
 
-**Root Cause:** App Check enforcement is enabled in Firebase Console, but the app doesn't send App Check tokens on localhost
-
----
-
-## ⚡ IMMEDIATE FIX (2 minutes)
-
-### Step 1: Disable App Check Enforcement
-
-1. **Open Firebase Console:**
-   ```
-   https://console.firebase.google.com/project/tuscitasseguras-2d1a6/appcheck
-   ```
-
-2. **Click on "APIs" tab**
-
-3. **Set these to "Unenforced":**
-   - ✅ Authentication → Click → Change to **"Unenforced"** → Save
-   - ✅ Cloud Firestore → Click → Change to **"Unenforced"** → Save
-   - ✅ Cloud Storage → Click → Change to **"Unenforced"** → Save
-
-### Step 2: Clear Browser Cache
-
-1. Press `Ctrl + Shift + Delete`
-2. Select "Cached images and files"
-3. Click "Clear data"
-
-### Step 3: Hard Refresh
-
-1. Close all browser tabs
-2. Open fresh tab: `http://localhost:8000/webapp/register.html`
-3. Press `Ctrl + Shift + R` (hard refresh)
-
-### Step 4: Test
-
-1. Fill out registration form
-2. Click "Crear Cuenta"
-3. ✅ Should work now!
+**Causa Raíz:** App Check ha bloqueado tu navegador durante 24 horas debido a errores 403 repetidos
 
 ---
 
-## ✅ What Was Fixed in Code
+## 🚨 NUEVO PROBLEMA DETECTADO: App Check Throttling
 
-1. **Enabled App Check imports** in 20 HTML files:
+Si ves este error:
+```
+AppCheck: Requests throttled due to 403 error. Attempts allowed again after 23h:59m:11s
+```
+
+**Firebase ha bloqueado tu navegador durante 24 horas.** Sigue los pasos de abajo.
+
+---
+
+## ⚡ SOLUCIÓN INMEDIATA (10 minutos)
+
+### Paso 1: Limpiar Estado de App Check del Navegador
+
+1. **Abrir herramienta de limpieza:**
+   ```
+   http://localhost:8000/webapp/clear-appcheck-throttle.html
+   ```
+
+2. **Click en "Limpiar Estado de App Check"**
+   - Espera el mensaje: "✅ Estado limpiado exitosamente!"
+
+3. **Resultado esperado:**
+   ```
+   Eliminados: X localStorage, Y sessionStorage, Z databases
+   ```
+
+### Paso 2: Limpiar Caché del Navegador
+
+1. Presionar `Ctrl + Shift + Delete`
+2. Seleccionar:
+   - ✅ "Cached images and files" (Imágenes en caché)
+   - ✅ "Cookies and other site data" (Cookies y datos)
+3. Click "Clear data" / "Borrar datos"
+
+### Paso 3: Cerrar y Reabrir Navegador
+
+1. **Cerrar TODAS las pestañas** de localhost
+2. **Cerrar el navegador completamente**
+3. **Abrir navegador nuevo**
+
+### Paso 4: Ir a Registro
+
+1. Abrir pestaña nueva
+2. Ir a: `http://localhost:8000/webapp/register.html`
+3. Presionar `Ctrl + Shift + R` (recarga forzada)
+
+### Paso 5: Verificar y Probar
+
+1. **Abrir Console (F12)**
+2. **NO deberías ver:**
+   - ❌ Mensajes de App Check
+   - ❌ Errores de throttling
+   - ❌ Errores 403
+
+3. **Llenar formulario de registro**
+4. **Click "Crear Cuenta"**
+5. ✅ **Debería funcionar ahora!**
+
+---
+
+## ✅ Qué Se Corrigió en el Código
+
+1. **App Check imports DESHABILITADOS temporalmente** en 20 archivos HTML:
    - `register.html`
    - `login.html`
    - `buscar-usuarios.html`
-   - And 17 more files
+   - Y 17 archivos más
 
-2. **Created documentation:**
-   - `docs/FIREBASE_AUTH_401_FIX.md` - Detailed fix guide
-   - `scripts/enable-appcheck-imports.sh` - Bulk enable script
+2. **Herramienta de limpieza creada:**
+   - `webapp/clear-appcheck-throttle.html` - Limpia estado de throttling
 
-3. **How it works now:**
-   - App Check is imported in all pages
-   - On localhost, App Check automatically disables itself (see `firebase-appcheck.js:66-70`)
-   - On production domains, App Check will activate automatically
-   - With enforcement disabled, the app works on localhost
-   - You can re-enable enforcement later for production
+3. **Scripts de automatización:**
+   - `scripts/disable-appcheck-imports.sh` - Deshabilita App Check (ya ejecutado)
+   - `scripts/enable-appcheck-imports.sh` - Habilita App Check (para producción)
+
+4. **Documentación completa:**
+   - `docs/APPCHECK_THROTTLING_FIX.md` - Guía completa de throttling
+   - `docs/FIREBASE_AUTH_401_FIX.md` - Guía de error 401
+
+5. **Cómo funciona ahora:**
+   - App Check está **deshabilitado** en desarrollo (evita throttling)
+   - En producción, puedes habilitarlo con: `./scripts/enable-appcheck-imports.sh`
+   - Sin App Check, la app funciona normalmente en localhost
+   - Para producción, App Check se activará automáticamente en dominios configurados
 
 ---
 
-## 🧪 Verification
+## 🧪 Verificación
 
-After the fix, you should see in browser console:
+Después del fix, en la consola del navegador deberías ver:
 
 ```
-🔧 Modo DESARROLLO detectado
-💡 App Check se desactivará para evitar errores
-⚠️  App Check DESACTIVADO en modo desarrollo
-💡 La app funcionará sin App Check en localhost
-✅ Las notificaciones funcionarán sin problemas
+(Sin mensajes de App Check - está deshabilitado)
 ```
 
----
-
-## 📚 Full Documentation
-
-See `docs/FIREBASE_AUTH_401_FIX.md` for:
-- Detailed explanation of the issue
-- Alternative solutions
-- Production setup instructions
-- API key restriction checks
-- Debug token configuration
+**✅ CORRECTO:** No hay mensajes de App Check
+**❌ ERROR:** Si ves "throttled" o errores 403, repite Paso 1-5
 
 ---
 
-## 🔄 Re-enabling for Production
+## 📚 Documentación Completa
 
-When you deploy to production:
+Ver `docs/APPCHECK_THROTTLING_FIX.md` para:
+- Explicación detallada del throttling
+- 3 opciones de configuración (Sin App Check, Debug Tokens, reCAPTCHA localhost)
+- Cómo prevenir el problema en el futuro
+- Troubleshooting completo
+- Setup para producción
 
-1. **Keep App Check imports enabled** (already done)
-2. **Configure reCAPTCHA Enterprise** for your domain
-3. **Re-enable enforcement** in Firebase Console
-4. **Test on production domain**
-
-The code is already set up to handle this automatically!
-
----
-
-## 🎯 Summary
-
-**Before:**
-- ❌ App Check imports commented out in 20 files
-- ❌ App Check enforcement enabled in Console
-- ❌ 401 errors on localhost
-
-**After:**
-- ✅ App Check imports enabled in all files
-- ✅ App Check auto-disables on localhost (by design)
-- ✅ Enforcement disabled for development
-- ✅ Registration works on localhost
-- ✅ Ready for production with proper App Check
+Ver `docs/FIREBASE_AUTH_401_FIX.md` para:
+- Error 401 sin throttling
+- Configuración de enforcement
+- Restricciones de API key
 
 ---
 
-**Status:** ✅ Code fixed and committed
-**Action Required:** Disable enforcement in Firebase Console (Step 1 above)
-**Time to Fix:** 2 minutes
+## 🔄 Habilitar para Producción
+
+Cuando despliegues a producción:
+
+1. **Habilitar App Check imports:**
+   ```bash
+   ./scripts/enable-appcheck-imports.sh
+   ```
+
+2. **Configurar reCAPTCHA Enterprise** para tu dominio de producción
+
+3. **Configurar enforcement** en Firebase Console (opcional)
+
+4. **Deploy:**
+   ```bash
+   firebase deploy --only hosting
+   ```
+
+5. **Probar en dominio de producción**
+
+App Check se activará automáticamente en dominios configurados!
 
 ---
 
-Need help? See `docs/FIREBASE_AUTH_401_FIX.md` for detailed troubleshooting.
+## 🎯 Resumen
+
+**Antes:**
+- ❌ App Check habilitado causando errores 403
+- ❌ Throttling activado (bloqueo 24 horas)
+- ❌ Estado guardado en navegador
+- ❌ 401 errors en localhost
+- ❌ Registro no funciona
+
+**Ahora:**
+- ✅ App Check imports deshabilitados en 20 archivos
+- ✅ Herramienta de limpieza creada
+- ✅ Scripts de automatización disponibles
+- ✅ Documentación completa
+- ✅ Registro funciona en localhost
+- ✅ Listo para producción (habilitar con script)
+
+---
+
+**Estado:** ✅ Código corregido y commitado
+**Acción Requerida:** Seguir Pasos 1-5 de arriba (10 minutos)
+**Tiempo Total:** 10 minutos
+**Prioridad:** 🔴 Crítica
+
+---
+
+**Ayuda:** Ver `docs/APPCHECK_THROTTLING_FIX.md` para guía completa
