@@ -646,3 +646,19 @@ async function handlePayPalPaymentFailed(sale) {
 
   // TODO: Enviar notificación al usuario
 }
+// ============================================================================
+// PUSH NOTIFICATIONS
+// ============================================================================
+// Import notification functions from notifications.js
+
+const notifications = require('./notifications');
+
+// Export notification functions
+exports.onMatchCreated = notifications.onMatchCreated;
+exports.onMatchAccepted = notifications.onMatchAccepted;
+exports.onMessageCreated = notifications.onMessageCreated;
+exports.onAppointmentConfirmed = notifications.onAppointmentConfirmed;
+exports.sendAppointmentReminders = notifications.sendAppointmentReminders;
+exports.onVIPEventPublished = notifications.onVIPEventPublished;
+exports.onSOSAlert = notifications.onSOSAlert;
+exports.sendTestNotification = notifications.sendTestNotification;
