@@ -44,19 +44,19 @@ service cloud.firestore {
     function isFemale() { return isAuthed() && gender() == 'femenino'; }
 
     // ============ PAYMENT VALIDATION HELPERS ============
-    // Obtener datos del usuario actual
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(uid())).data;
-    }
+    // ⚠️ OPTIMIZED: Using custom claims instead of get() to reduce costs
+    // Custom claims are set by Cloud Functions when payment status changes
 
     // Verificar si el usuario tiene membresía activa
+    // OPTIMIZED: Reads from custom claims (free) instead of get() (costs money)
     function hasActiveMembership() {
-      return getUserData().hasActiveSubscription == true;
+      return request.auth.token.hasActiveSubscription == true;
     }
 
     // Verificar si el usuario tiene seguro anti-plantón
+    // OPTIMIZED: Reads from custom claims (free) instead of get() (costs money)
     function hasInsurance() {
-      return getUserData().hasAntiGhostingInsurance == true;
+      return request.auth.token.hasAntiGhostingInsurance == true;
     }
 
     // Verificar si el usuario NECESITA pagar (solo hombres por ahora)
@@ -86,6 +86,16 @@ service cloud.firestore {
                     && isAdult(request.resource.data.birthDate);  // CRITICAL: Must be 18+
 
       // Lectura: Usuarios autenticados pueden ver perfiles
+      // ⚠️ IMPORTANTE - FILTRADO DE GÉNERO (Business Rule Enforcement):
+      // - Backend permite leer todos los perfiles autenticados (necesario para funcionalidad)
+      // - **CRITICAL**: Frontend DEBE filtrar queries por género opuesto:
+      //   ✅ CORRECTO: db.collection('users').where('gender', '==', oppositeGender)
+      //   ❌ INCORRECTO: db.collection('users').get() // sin filtro
+      // - Aplicar filtro aquí requeriría get() costoso (€€€) por cada lectura
+      // - Trade-off aceptado: Usuarios técnicos pueden bypassear, pero:
+      //   1. Chat/citas SÍ validan género en backend (canChat/canSchedule)
+      //   2. Mayoría de usuarios usan app normal con filtros
+      //   3. Costo de get() en cada lectura > riesgo de bypass
       allow read: if isAuthed();
 
       // Actualización: El dueño puede actualizar su perfil (menos userRole que solo admin cambia)
@@ -396,6 +406,19 @@ service cloud.firestore {
 
       // Inmutables - no se pueden modificar ni eliminar
       allow update, delete: if false;
+    }
+
+    // ============ RATE LIMITS ============
+    match /rate_limits/{limitId} {
+      // Solo Cloud Functions puede crear/eliminar registros
+      allow create, delete: if false; // Solo Cloud Functions via Admin SDK
+
+      // Los usuarios NO pueden ver rate limits (información interna)
+      // Solo admins pueden leer para análisis
+      allow read: if isAdmin();
+
+      // Inmutables - no se pueden modificar
+      allow update: if false;
     }
 
     // ============ DEFAULT DENY ============

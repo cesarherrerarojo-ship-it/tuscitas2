@@ -35,6 +35,23 @@ async function updateUserMembership(userId, status, subscriptionData = {}) {
   await userRef.update(updateData);
   console.log(`[updateUserMembership] User ${userId} membership updated: ${status}`);
 
+  // CRITICAL: Update custom claims for Firestore Rules
+  // This allows Rules to check payment status without expensive get() calls
+  try {
+    const currentUser = await admin.auth().getUser(userId);
+    const currentClaims = currentUser.customClaims || {};
+
+    await admin.auth().setCustomClaims(userId, {
+      ...currentClaims,
+      hasActiveSubscription: status === 'active'
+    });
+
+    console.log(`[updateUserMembership] Custom claims updated for ${userId}: hasActiveSubscription=${status === 'active'}`);
+  } catch (error) {
+    console.error(`[updateUserMembership] Error updating custom claims for ${userId}:`, error);
+    // Don't throw - Firestore update succeeded, claims update is optimization
+  }
+
   return updateData;
 }
 
@@ -55,6 +72,23 @@ async function updateUserInsurance(userId, paymentData) {
 
   await userRef.update(updateData);
   console.log(`[updateUserInsurance] User ${userId} insurance activated`);
+
+  // CRITICAL: Update custom claims for Firestore Rules
+  // This allows Rules to check insurance status without expensive get() calls
+  try {
+    const currentUser = await admin.auth().getUser(userId);
+    const currentClaims = currentUser.customClaims || {};
+
+    await admin.auth().setCustomClaims(userId, {
+      ...currentClaims,
+      hasAntiGhostingInsurance: true
+    });
+
+    console.log(`[updateUserInsurance] Custom claims updated for ${userId}: hasAntiGhostingInsurance=true`);
+  } catch (error) {
+    console.error(`[updateUserInsurance] Error updating custom claims for ${userId}:`, error);
+    // Don't throw - Firestore update succeeded, claims update is optimization
+  }
 
   return updateData;
 }
