@@ -69,7 +69,7 @@ Storage: Firebase Storage (photos)
 Functions: Cloud Functions (Node.js 18)
 Security:
   - App Check with reCAPTCHA Enterprise
-  - Comprehensive Firestore Rules (271 lines)
+  - Comprehensive Firestore Rules (336 lines)
   - Role-based access control
 ```
 
@@ -125,7 +125,7 @@ Sentry SDK
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         Security Rules (271 lines) - CRITICAL               │
+│         Security Rules (336 lines) - CRITICAL               │
 │     ⚠️ ENFORCES ALL BUSINESS LOGIC (backend)                │
 │  • Heterosexual search only                                 │
 │  • Payment validation                                       │
@@ -274,12 +274,12 @@ t2c06/
 │       └── utils/                     # Utilities
 │
 ├── functions/                         # Firebase Cloud Functions
-│   ├── index.js                       # 208 lines, 5 functions
+│   ├── index.js                       # 648 lines, 7+ functions
 │   ├── package.json                   # Node.js 18
 │   └── scripts/
 │       └── update-existing-users.js   # User migration script
 │
-├── firestore.rules                    # ⚠️ CRITICAL - 271 lines
+├── firestore.rules                    # ⚠️ CRITICAL - 336 lines
 ├── firebase-storage.rules             # ⚠️ CRITICAL - 102 lines
 ├── firestore.indexes.json             # Database indexes
 ├── firebase.json                      # Firebase config
@@ -509,7 +509,7 @@ admin:      Platform administrator (full access)
 concierge:  VIP event organizer (€199/month)
 ```
 
-### Firestore Security Rules (271 lines)
+### Firestore Security Rules (336 lines)
 
 **Key Enforcement Points:**
 
@@ -728,10 +728,10 @@ const appCheck = initializeAppCheck(app, {
 
 | File | Purpose | Lines | Importance |
 |------|---------|-------|------------|
-| `firestore.rules` | Security rules - CRITICAL | 271 | 🔴 CRITICAL |
+| `firestore.rules` | Security rules - CRITICAL | 336 | 🔴 CRITICAL |
 | `firebase-storage.rules` | Storage security | 102 | 🔴 CRITICAL |
 | `webapp/js/utils.js` | Shared utilities | 475 | 🟡 Important |
-| `functions/index.js` | Cloud Functions | 208 | 🟡 Important |
+| `functions/index.js` | Cloud Functions | 648 | 🟡 Important |
 | `BUSINESS_RULES.md` | Business logic | 738 | 🟢 Reference |
 
 ### Configuration Files
