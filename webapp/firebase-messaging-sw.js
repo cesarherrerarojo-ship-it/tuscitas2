@@ -8,12 +8,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-comp
 
 // Firebase configuration (same as firebase-config.js)
 const firebaseConfig = {
-  apiKey: "AIzaSyAs5def8VxOqF6oWESFbDwVjdMOQtbE-YY",
+  apiKey: "AIzaSyAgFcoHwoBpo80rlEHL2hHVZ2DqtjWXh2s",
   authDomain: "tuscitasseguras-2d1a6.firebaseapp.com",
   projectId: "tuscitasseguras-2d1a6",
   storageBucket: "tuscitasseguras-2d1a6.firebasestorage.app",
-  messagingSenderId: "660685962081",
-  appId: "1:660685962081:web:3e2745ee2872e48a0f5f67"
+  messagingSenderId: "924208562587",
+  appId: "1:924208562587:web:5291359426fe390b36213e"
 };
 
 // Initialize Firebase

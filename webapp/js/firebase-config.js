@@ -43,8 +43,8 @@ export const storage = getStorage(app);
  * @example
  * export const VAPID_PUBLIC_KEY = 'BNxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
  */
-export const VAPID_PUBLIC_KEY = 'BNxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
-// TODO: Replace with your actual VAPID key from Firebase Console
+export const VAPID_PUBLIC_KEY = 'BJW5I1B7KSEvM1q8FuwNokyu4sgoUy0u93C2XSQ8kpDVUdw6jv1UgYo9k_lIRjs-Rpte-YUkFqM7bbOYAD32T-w';
+// ✅ VAPID key configured (2025-11-14)
 // See: https://console.firebase.google.com/project/tuscitasseguras-2d1a6/settings/cloudmessaging
 
 // Export app for potential future use
