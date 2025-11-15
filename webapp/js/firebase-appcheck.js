@@ -64,10 +64,12 @@ if (!isAllowedDomain) {
   console.warn('💡 Mientras tanto, la app funcionará sin App Check');
   console.warn('');
 } else if (isDevelopment) {
-  console.log('⚠️  App Check DESACTIVADO en modo desarrollo');
+  console.log('⚠️  App Check COMPLETAMENTE DESACTIVADO en modo desarrollo');
   console.log('💡 La app funcionará sin App Check en localhost');
-  console.log('✅ Las notificaciones funcionarán sin problemas');
-  // No inicializar App Check en desarrollo
+  console.log('✅ Todas las operaciones funcionarán sin restricciones');
+  console.log('🔧 Esto evita el baneo temporal de App Check');
+  // NO inicializar App Check en desarrollo
+  appCheck = null;
 } else {
   // Dominio permitido y en producción
   try {
@@ -144,9 +146,9 @@ window.getAppCheckToken = async function() {
 };
 
 // ============================================================================
-// 4. AUTO-VERIFICAR QUE APP CHECK FUNCIONA (DESARROLLO)
+// 4. AUTO-VERIFICAR QUE APP CHECK FUNCIONA (SOLO EN PRODUCCIÓN)
 // ============================================================================
-if (isDevelopment && appCheck) {
+if (!isDevelopment && appCheck) {
   // Esperar un momento para que App Check se inicialice
   setTimeout(async () => {
     console.log('🧪 Verificando App Check...');
