@@ -942,6 +942,418 @@ async function handlePayPalPaymentFailed(sale) {
 
   console.log(`[handlePayPalPaymentFailed] Notification and failed payment record created for user ${userId}`);
 }
+
+// ============================================================================
+// PAYPAL VAULT: Long-term payment retention for Anti-Ghosting Insurance
+// ============================================================================
+
+/**
+ * Create Vault Setup Token for Insurance (saves payment method without charging)
+ * Called from frontend when user purchases insurance
+ *
+ * Flow:
+ * 1. Frontend calls this function
+ * 2. Backend creates setup token with PayPal API
+ * 3. Frontend uses token to show PayPal UI
+ * 4. User approves → PayPal returns payment token
+ * 5. Frontend saves payment token in Firestore
+ */
+exports.createInsuranceVaultSetup = functions.https.onCall(async (data, context) => {
+  // 1. Verify authentication
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'Must be authenticated to create vault setup'
+    );
+  }
+
+  const userId = context.auth.uid;
+  console.log(`[createInsuranceVaultSetup] Creating vault setup for user ${userId}`);
+
+  try {
+    // 2. Get PayPal credentials
+    const paypalMode = functions.config().paypal?.mode || process.env.PAYPAL_MODE || 'sandbox';
+    const paypalClientId = functions.config().paypal?.client_id || process.env.PAYPAL_CLIENT_ID;
+    const paypalSecret = functions.config().paypal?.secret || process.env.PAYPAL_SECRET;
+
+    if (!paypalClientId || !paypalSecret) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'PayPal credentials not configured'
+      );
+    }
+
+    // 3. Get PayPal access token
+    const authUrl = paypalMode === 'live'
+      ? 'https://api-m.paypal.com/v1/oauth2/token'
+      : 'https://api-m.sandbox.paypal.com/v1/oauth2/token';
+
+    const authResponse = await fetch(authUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(`${paypalClientId}:${paypalSecret}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: 'grant_type=client_credentials'
+    });
+
+    if (!authResponse.ok) {
+      console.error('[createInsuranceVaultSetup] Failed to get access token:', authResponse.status);
+      throw new functions.https.HttpsError('internal', 'Failed to authenticate with PayPal');
+    }
+
+    const authData = await authResponse.json();
+    const accessToken = authData.access_token;
+
+    // 4. Create Vault Setup Token
+    // Documentation: https://developer.paypal.com/docs/checkout/save-payment-methods/purchase-later/js-sdk/paypal/
+    const setupUrl = paypalMode === 'live'
+      ? 'https://api-m.paypal.com/v3/vault/setup-tokens'
+      : 'https://api-m.sandbox.paypal.com/v3/vault/setup-tokens';
+
+    const setupPayload = {
+      payment_source: {
+        paypal: {
+          description: 'Seguro Anti-Plantón TuCitaSegura - Retención de €120',
+          usage_type: 'MERCHANT',
+          customer_type: 'CONSUMER',
+          permit_multiple_payment_tokens: false
+        }
+      }
+    };
+
+    const setupResponse = await fetch(setupUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'PayPal-Request-Id': `insurance-vault-${userId}-${Date.now()}` // Idempotency key
+      },
+      body: JSON.stringify(setupPayload)
+    });
+
+    if (!setupResponse.ok) {
+      const errorText = await setupResponse.text();
+      console.error('[createInsuranceVaultSetup] Failed to create setup token:', setupResponse.status, errorText);
+      throw new functions.https.HttpsError('internal', 'Failed to create vault setup token');
+    }
+
+    const setupData = await setupResponse.json();
+
+    console.log(`[createInsuranceVaultSetup] Setup token created: ${setupData.id}`);
+
+    return {
+      success: true,
+      setupToken: setupData.id,
+      approveUrl: setupData.links?.find(link => link.rel === 'approve')?.href
+    };
+
+  } catch (error) {
+    console.error('[createInsuranceVaultSetup] Error:', error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError('internal', 'Failed to create vault setup');
+  }
+});
+
+/**
+ * Charge €120 from saved payment method when user ghosts a date
+ * Called by admin when investigating a no-show incident
+ *
+ * @param {Object} data - { userId: string, appointmentId: string, reason: string }
+ */
+exports.chargeInsuranceFromVault = functions.https.onCall(async (data, context) => {
+  // 1. Verify admin authorization
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
+  }
+
+  const adminToken = context.auth.token;
+  if (adminToken.role !== 'admin') {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Only admins can charge insurance'
+    );
+  }
+
+  const { userId, appointmentId, reason } = data;
+
+  if (!userId || !appointmentId) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'userId and appointmentId are required'
+    );
+  }
+
+  console.log(`[chargeInsuranceFromVault] Charging insurance for user ${userId}, appointment ${appointmentId}`);
+
+  try {
+    // 2. Get user's payment token from Firestore
+    const db = admin.firestore();
+    const userRef = db.collection('users').doc(userId);
+    const userSnap = await userRef.get();
+
+    if (!userSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'User not found');
+    }
+
+    const userData = userSnap.data();
+    const paymentToken = userData.insurancePaymentToken;
+
+    if (!paymentToken) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'User does not have saved payment method'
+      );
+    }
+
+    // 3. Get PayPal credentials
+    const paypalMode = functions.config().paypal?.mode || process.env.PAYPAL_MODE || 'sandbox';
+    const paypalClientId = functions.config().paypal?.client_id || process.env.PAYPAL_CLIENT_ID;
+    const paypalSecret = functions.config().paypal?.secret || process.env.PAYPAL_SECRET;
+
+    if (!paypalClientId || !paypalSecret) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'PayPal credentials not configured'
+      );
+    }
+
+    // 4. Get PayPal access token
+    const authUrl = paypalMode === 'live'
+      ? 'https://api-m.paypal.com/v1/oauth2/token'
+      : 'https://api-m.sandbox.paypal.com/v1/oauth2/token';
+
+    const authResponse = await fetch(authUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(`${paypalClientId}:${paypalSecret}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: 'grant_type=client_credentials'
+    });
+
+    if (!authResponse.ok) {
+      throw new functions.https.HttpsError('internal', 'Failed to authenticate with PayPal');
+    }
+
+    const authData = await authResponse.json();
+    const accessToken = authData.access_token;
+
+    // 5. Create payment using saved payment token
+    // Documentation: https://developer.paypal.com/docs/checkout/save-payment-methods/during-purchase/
+    const ordersUrl = paypalMode === 'live'
+      ? 'https://api-m.paypal.com/v2/checkout/orders'
+      : 'https://api-m.sandbox.paypal.com/v2/checkout/orders';
+
+    const orderPayload = {
+      intent: 'CAPTURE',
+      purchase_units: [{
+        description: `Seguro Anti-Plantón - Plantón en cita ${appointmentId}`,
+        amount: {
+          currency_code: 'EUR',
+          value: '120.00'
+        },
+        custom_id: userId,
+        invoice_id: `insurance-charge-${appointmentId}-${Date.now()}`
+      }],
+      payment_source: {
+        token: {
+          id: paymentToken,
+          type: 'PAYMENT_METHOD_TOKEN'
+        }
+      }
+    };
+
+    const orderResponse = await fetch(ordersUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'PayPal-Request-Id': `insurance-capture-${appointmentId}-${Date.now()}`
+      },
+      body: JSON.stringify(orderPayload)
+    });
+
+    if (!orderResponse.ok) {
+      const errorText = await orderResponse.text();
+      console.error('[chargeInsuranceFromVault] Failed to create order:', orderResponse.status, errorText);
+      throw new functions.https.HttpsError('internal', 'Failed to charge payment method');
+    }
+
+    const orderData = await orderResponse.json();
+
+    console.log(`[chargeInsuranceFromVault] Order created: ${orderData.id}, status: ${orderData.status}`);
+
+    // 6. Log the charge in Firestore
+    const chargeData = {
+      userId: userId,
+      appointmentId: appointmentId,
+      orderId: orderData.id,
+      amount: 120,
+      currency: 'EUR',
+      status: orderData.status,
+      reason: reason || 'No-show at appointment',
+      chargedBy: context.auth.uid,
+      chargedAt: admin.firestore.FieldValue.serverTimestamp(),
+      paymentToken: paymentToken
+    };
+
+    await db.collection('insurance_charges').add(chargeData);
+
+    // 7. Notify user
+    await createUserNotification(userId, {
+      title: 'Cargo de Seguro Anti-Plantón',
+      message: `Se ha cobrado €120 de tu seguro anti-plantón por no asistir a la cita ${appointmentId}. Razón: ${reason || 'No-show'}`,
+      type: 'warning',
+      actionUrl: `/webapp/cita-detalle.html?id=${appointmentId}`,
+      actionLabel: 'Ver detalles',
+      metadata: {
+        orderId: orderData.id,
+        appointmentId: appointmentId
+      }
+    });
+
+    console.log(`[chargeInsuranceFromVault] Charge completed successfully for user ${userId}`);
+
+    return {
+      success: true,
+      orderId: orderData.id,
+      status: orderData.status,
+      amount: 120,
+      currency: 'EUR'
+    };
+
+  } catch (error) {
+    console.error('[chargeInsuranceFromVault] Error:', error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError('internal', 'Failed to charge insurance');
+  }
+});
+
+/**
+ * Delete saved payment method (when user cancels account)
+ * Called when user deletes their account
+ *
+ * @param {Object} data - { userId: string }
+ */
+exports.deleteInsuranceVault = functions.https.onCall(async (data, context) => {
+  // 1. Verify authentication
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be authenticated');
+  }
+
+  const { userId } = data;
+  const requesterId = context.auth.uid;
+
+  // Only allow user to delete their own vault, or admin
+  if (userId !== requesterId && context.auth.token.role !== 'admin') {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'Can only delete your own payment method'
+    );
+  }
+
+  console.log(`[deleteInsuranceVault] Deleting vault for user ${userId}`);
+
+  try {
+    // 2. Get user's payment token
+    const db = admin.firestore();
+    const userRef = db.collection('users').doc(userId);
+    const userSnap = await userRef.get();
+
+    if (!userSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'User not found');
+    }
+
+    const userData = userSnap.data();
+    const paymentToken = userData.insurancePaymentToken;
+
+    if (!paymentToken) {
+      console.log(`[deleteInsuranceVault] No payment token found for user ${userId}`);
+      return { success: true, message: 'No payment method to delete' };
+    }
+
+    // 3. Get PayPal credentials
+    const paypalMode = functions.config().paypal?.mode || process.env.PAYPAL_MODE || 'sandbox';
+    const paypalClientId = functions.config().paypal?.client_id || process.env.PAYPAL_CLIENT_ID;
+    const paypalSecret = functions.config().paypal?.secret || process.env.PAYPAL_SECRET;
+
+    if (!paypalClientId || !paypalSecret) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'PayPal credentials not configured'
+      );
+    }
+
+    // 4. Get PayPal access token
+    const authUrl = paypalMode === 'live'
+      ? 'https://api-m.paypal.com/v1/oauth2/token'
+      : 'https://api-m.sandbox.paypal.com/v1/oauth2/token';
+
+    const authResponse = await fetch(authUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(`${paypalClientId}:${paypalSecret}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: 'grant_type=client_credentials'
+    });
+
+    if (!authResponse.ok) {
+      throw new functions.https.HttpsError('internal', 'Failed to authenticate with PayPal');
+    }
+
+    const authData = await authResponse.json();
+    const accessToken = authData.access_token;
+
+    // 5. Delete payment token
+    // Documentation: https://developer.paypal.com/docs/api/payment-tokens/v3/#payment-tokens_delete
+    const deleteUrl = paypalMode === 'live'
+      ? `https://api-m.paypal.com/v3/vault/payment-tokens/${paymentToken}`
+      : `https://api-m.sandbox.paypal.com/v3/vault/payment-tokens/${paymentToken}`;
+
+    const deleteResponse = await fetch(deleteUrl, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    // 204 No Content = success
+    if (!deleteResponse.ok && deleteResponse.status !== 204) {
+      const errorText = await deleteResponse.text();
+      console.error('[deleteInsuranceVault] Failed to delete token:', deleteResponse.status, errorText);
+      // Don't throw - still remove from Firestore
+    }
+
+    // 6. Remove from Firestore
+    await userRef.update({
+      insurancePaymentToken: admin.firestore.FieldValue.delete(),
+      hasAntiGhostingInsurance: false,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log(`[deleteInsuranceVault] Payment method deleted for user ${userId}`);
+
+    return {
+      success: true,
+      message: 'Payment method deleted successfully'
+    };
+
+  } catch (error) {
+    console.error('[deleteInsuranceVault] Error:', error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError('internal', 'Failed to delete payment method');
+  }
+});
+
 // ============================================================================
 // PUSH NOTIFICATIONS
 // ============================================================================
