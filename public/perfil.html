@@ -1,15 +1,16 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <
-  
-  
-  
-  
-  meta charset="utf-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="Editar y gestionar tu perfil en TuCitaSegura." />
+  
   <title>Mi Perfil — TuCitaSegura</title>
+  
+  <!-- App Check Manager -->
+  <script src="js/app-check-manager.js"></script>
+  <!-- Mobile Menu Component -->
+  <script src="js/mobile-menu.js"></script>
   
   <!-- SEO & Social Media -->
   <meta property="og:title" content="TuCitaSegura - Citas Seguras sin Plantones" />
@@ -37,16 +38,12 @@
 
   <!-- CSS del proyecto -->
   <link rel="stylesheet" href="styles.css" />
+  <!-- Enhanced Animations -->
+  <link rel="stylesheet" href="css/enhanced-animations.css" />
   <link rel="canonical" href="https://tucitasegura.com/perfil" />
   <meta name="robots" content="noindex,nofollow" />
 
   <style>
-    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 35%, #0369a1 100%); overflow-x: hidden; }
-    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
-    .gradient-text { background: linear-gradient(135deg, #7dd3fc, #0ea5e9, #38bdf8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-    .btn-primary { background: linear-gradient(135deg, #0ea5e9, #0369a1); box-shadow: 0 8px 24px rgba(14,165,233,0.2); transition: all 0.3s ease; }
-    .btn-primary:hover { background: linear-gradient(135deg, #0284c7, #075985); box-shadow: 0 12px 40px rgba(14,165,233,0.35); transform: translateY(-2px); }
-    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #0ea5e9; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1001; display:none; }
     .avatar-circle { width: 96px; height: 96px; border-radius: 9999px; overflow: hidden; border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); }
   </style>
 
@@ -54,6 +51,9 @@
   <meta name="app_check_site_key" content="6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2" />
   <!-- App Check provider selection -->
   <meta name="app_check_provider" content="v3" />
+  <!-- Dev only: desactivar reCAPTCHA en local para evitar ERR_ABORTED de extensiones/bloqueos -->
+  <!-- Quitar esta meta antes de producción -->
+  
   <style>
     .tcs-recaptcha-banner{position:fixed;left:0;right:0;top:0;z-index:10000;background:#7f1d1d;color:#fecaca;border-bottom:1px solid #fca5a5;padding:.6rem 1rem;font-size:.9rem;display:none}
     .tcs-recaptcha-banner b{color:#fff}
@@ -61,20 +61,51 @@
 </head>
 <body class="min-h-screen text-white font-inter">
   <div id="tcsRecaptchaBanner" class="tcs-recaptcha-banner">⚠️ <b>App Check</b>: reCAPTCHA no está configurado para este dominio. Revisa el site key de App Check.</div>
-  <header class="fixed w-full top-0 z-50 glass">
-    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+  <header class="fixed top-0 left-0 w-full glass backdrop-blur-xl z-50">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
       <div class="flex items-center gap-2">
-        <i class="fas fa-id-card text-blue-300 text-2xl"></i>
+        <i class="fas fa-heart-circle-check text-blue-400 text-2xl"></i>
         <span class="text-xl font-bold gradient-text">TuCitaSegura</span>
       </div>
-      <div class="flex items-center gap-4">
-        <span id="userEmail" class="text-blue-100 text-sm"></span>
-        <button id="logoutBtn" class="glass px-4 py-2 rounded-full font-semibold hover:bg-white/20 transition-all">Salir</button>
+      <div class="hidden md:flex items-center gap-6">
+        <span id="userEmail" class="text-sm text-gray-300">—</span>
+        <a href="/conversaciones.html" class="hover:underline">Conversaciones</a>
+        <a href="/admin/dashboard.html" class="hover:underline">Admin</a>
+        <button id="logoutBtn" class="glass px-5 py-2 rounded-full font-semibold">Salir</button>
+      </div>
+          <!-- Mobile menu button -->
+      <div class="md:hidden">
+        <button id="mobileMenuBtn" class="text-white hover:text-blue-400 transition-colors" aria-label="Abrir menú">
+          <i class="fas fa-bars text-xl"></i>
+        </button>
       </div>
     </nav>
   </header>
 
   <main class="max-w-6xl mx-auto px-4 pt-24 pb-16">
+    <section class="glass rounded-2xl p-6 md:p-8 mb-6">
+      <div class="md:flex items-center gap-6">
+        <div class="avatar-circle avatar-ring">
+          <img id="avatarPreviewTop" src="" alt="Avatar" class="w-full h-full object-cover hidden" />
+        </div>
+        <div class="flex-1">
+          <h1 class="title-hero gradient-text">Mi Perfil</h1>
+          <div class="flex flex-wrap gap-2 mt-3" id="statusChips">
+            <span id="chipEmailVerified" class="chip">Email</span>
+            <span id="chipPhoneVerified" class="chip">Teléfono</span>
+            <span id="chipProfileComplete" class="chip">Perfil</span>
+            <span id="chipConcierge" class="chip hidden">Concierge</span>
+          </div>
+          <div class="progress mt-4"><div id="profileProgressBar" class="progress-bar"></div></div>
+          <div id="profileProgressText" class="text-soft mt-2">Completitud 0%</div>
+          <div class="mt-4 flex gap-3">
+            <button id="topVerifyEmailBtn" class="btn-success rounded">Verificar Email</button>
+            <button id="topSendOtpBtn" class="btn-success rounded">Enviar código SMS</button>
+            <button id="topSaveProfileBtn" class="btn-success rounded">Guardar perfil</button>
+          </div>
+        </div>
+      </div>
+    </section>
     <!-- Banner verificación -->
     <div id="verifyBanner" class="hidden glass border border-yellow-400/40 text-yellow-100 p-4 rounded-xl mb-6">
       <div class="flex items-center justify-between gap-4">
@@ -98,9 +129,9 @@
     </div>
 
     <section class="glass rounded-2xl p-6 md:p-8">
-      <h1 class="text-3xl md:text-4xl font-black mb-2 gradient-text">Mi Perfil</h1>
+      <h2 class="section-title">Mi Perfil</h2>
       <span id="conciergeBadge" class="ml-2 px-3 py-1 rounded-full text-xs bg-indigo-600/30 text-indigo-200 border border-indigo-400/40 hidden">🎩 Concierge Verificado</span>
-      <p class="text-blue-100 mb-6">Completa tu información para mejorar tus coincidencias.</p>
+      <p class="lead mb-6">Completa tu información para mejorar tus coincidencias.</p>
 
       <form id="profileForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="md:col-span-2 flex items-center gap-6">
@@ -110,7 +141,7 @@
           <div>
             <label for="avatarInput" class="block mb-1 text-blue-100">Avatar</label>
             <input id="avatarInput" type="file" accept="image/*" class="block text-sm" />
-            <button id="uploadAvatarBtn" type="button" class="mt-2 btn-primary px-4 py-2 rounded text-white font-semibold">Subir avatar</button>
+          <button id="uploadAvatarBtn" type="button" class="mt-2 btn-success px-4 py-2 rounded text-white font-semibold">Subir avatar</button>
             <p class="text-xs text-blue-100 mt-2">Formatos: PNG/JPG/JPEG. Máx: 5MB.</p>
             <p class="text-xs text-yellow-200 mt-1">Obligatorio: sube una foto de perfil para completar.</p>
           </div>
@@ -131,14 +162,14 @@
         <!-- Verificación de teléfono (OTP) -->
         <div class="md:col-span-2 glass p-4 rounded-xl">
           <h2 class="text-xl font-bold mb-2">Verificación de teléfono</h2>
-          <p class="text-sm text-blue-100 mb-3">Añade tu teléfono para aumentar tu reputación y habilitar recuperación por SMS.</p>
+          <p class="lead mb-3">Añade tu teléfono para aumentar tu reputación y habilitar recuperación por SMS.</p>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
             <div>
               <label for="phoneInput" class="block mb-1 text-blue-100">Teléfono (formato internacional)</label>
               <input id="phoneInput" type="tel" class="input bg-white/10 text-white border border-white/20 w-full" placeholder="+34XXXXXXXXX" autocomplete="tel" />
             </div>
             <div>
-              <button id="sendOtpBtn" type="button" class="btn-secondary w-full py-2 rounded">Enviar código</button>
+          <button id="sendOtpBtn" type="button" class="btn-success w-full py-2 rounded">Enviar código</button>
             </div>
             <div>
               <label for="otpCodeInput" class="block mb-1 text-blue-100">Código SMS</label>
@@ -146,7 +177,7 @@
             </div>
           </div>
           <div class="flex gap-3 mt-3">
-            <button id="confirmOtpBtn" type="button" class="btn-primary flex-1 py-2 rounded">Confirmar teléfono</button>
+            <button id="confirmOtpBtn" type="button" class="btn-success flex-1 py-2 rounded">Confirmar teléfono</button>
             <span id="phoneStatus" class="text-sm text-blue-200">—</span>
           </div>
           <div id="otpMsg" class="text-sm text-yellow-200 mt-2"></div>
@@ -154,7 +185,7 @@
         </div>
         <!-- Información personal -->
         <div class="md:col-span-2 glass p-4 rounded-xl">
-          <h2 class="text-xl font-bold mb-2">Información personal</h2>
+          <h2 class="section-title">Información personal</h2>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label for="relationshipSelect" class="block mb-1 text-blue-100">Estado civil</label>
@@ -184,8 +215,8 @@
 
         <!-- Fotos adicionales (galería) -->
         <div class="md:col-span-2 glass p-4 rounded-xl">
-          <h2 class="text-xl font-bold mb-2">Fotos adicionales</h2>
-          <p class="text-sm text-blue-100 mb-3">Puedes subir hasta 6 fotos extra. <b>Obligatorio: al menos 2</b> además del avatar.</p>
+          <h2 class="section-title">Fotos adicionales</h2>
+          <p class="lead mb-3">Puedes subir hasta 6 fotos extra. <b>Obligatorio: al menos 2</b> además del avatar.</p>
           <div class="flex items-center gap-4 mb-3">
             <label for="galleryInput" class="block mb-1 text-blue-100">Subir fotos</label>
             <input id="galleryInput" type="file" accept="image/*" multiple class="block text-sm" />
@@ -197,8 +228,8 @@
 
         <!-- Ubicación de origen -->
         <div class="md:col-span-2 glass p-4 rounded-xl">
-          <h2 class="text-xl font-bold mb-2">Municipio de origen</h2>
-          <p class="text-sm text-blue-100 mb-3">Indica tu municipio de origen para mejorar tus coincidencias.</p>
+          <h2 class="section-title">Municipio de origen</h2>
+          <p class="lead mb-3">Indica tu municipio de origen para mejorar tus coincidencias.</p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
             <div>
               <label for="municipalityInput" class="block mb-1 text-blue-100">Municipio</label>
@@ -212,8 +243,8 @@
         </div>
         <!-- Preferencias de notificación -->
         <div class="md:col-span-2 glass p-4 rounded-xl">
-          <h2 class="text-xl font-bold mb-2">Preferencias de notificación</h2>
-          <p class="text-sm text-blue-100 mb-3">Elige cómo quieres recibir avisos (validación y otros eventos).</p>
+          <h2 class="section-title">Preferencias de notificación</h2>
+          <p class="lead mb-3">Elige cómo quieres recibir avisos (validación y otros eventos).</p>
           <div class="flex gap-6 items-center">
             <label class="flex items-center gap-2"><input id="notifyEmailChk" type="checkbox" class="accent-blue-500" /> Email</label>
             <label class="flex items-center gap-2"><input id="notifySmsChk" type="checkbox" class="accent-blue-500" /> SMS</label>
@@ -222,7 +253,7 @@
           <p class="text-xs text-blue-200 mt-2">Por defecto usamos email. Puedes cambiarlo cuando quieras.</p>
         </div>
         <div class="md:col-span-2">
-          <button id="saveProfileBtn" type="button" class="btn-primary w-full py-3 rounded text-white font-bold">Guardar y continuar</button>
+          <button id="saveProfileBtn" type="button" class="btn-success w-full py-3 rounded text-white font-bold">Guardar y continuar</button>
         </div>
       </form>
     </section>
@@ -231,6 +262,8 @@
   </main>
 
   <script type="module">
+    import { initAppCheckDebug } from "./webapp/js/firebase-appcheck.js";
+    try { initAppCheckDebug(); } catch {}
     import { auth, db, storage } from "./js/firebase-config-enterprise.js";
     import { doc, setDoc, getDoc, deleteField } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
     import { onAuthStateChanged, sendEmailVerification, signOut, RecaptchaVerifier, linkWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
@@ -277,6 +310,13 @@
     const galleryMsg = document.getElementById('galleryMsg');
     const paypalFieldWrap = document.getElementById('paypalFieldWrap');
     const paypalEmailInput = document.getElementById('paypalEmailInput');
+    const avatarPreviewTop = document.getElementById('avatarPreviewTop');
+    const chipEmailVerified = document.getElementById('chipEmailVerified');
+    const chipPhoneVerified = document.getElementById('chipPhoneVerified');
+    const chipProfileComplete = document.getElementById('chipProfileComplete');
+    const chipConcierge = document.getElementById('chipConcierge');
+    const profileProgressBar = document.getElementById('profileProgressBar');
+    const profileProgressText = document.getElementById('profileProgressText');
     let phoneVerifiedFlag = false;
     let profileValidatedFlag = false;
     const appCheckBanner = document.getElementById("tcsRecaptchaBanner");
@@ -294,13 +334,69 @@
       window.scrollTo({ top: y, behavior: 'smooth' });
     });
 
-    // Banner App Check (heurística simple para localhost o ausencia de clave)
-    try {
-      const siteKey = document.querySelector('meta[name="app_check_site_key"]').getAttribute('content');
-      if (location.hostname === 'localhost' || !siteKey) {
-        appCheckBanner.style.display = 'block';
+    // Banner App Check: mostrar si no hay token o init falló
+    async function diagnoseAppCheck(banner) {
+      try {
+        const token = (localStorage.getItem('firebaseAppCheckDebugToken') || (typeof self.FIREBASE_APPCHECK_DEBUG_TOKEN === 'string' ? self.FIREBASE_APPCHECK_DEBUG_TOKEN : '')).trim();
+        if (!token) {
+          banner.innerHTML = '⚠️ <b>App Check</b>: sin token de depuración. Genera y registra uno en Firebase Console y recarga con <code>?debugtoken=EL_TOKEN</code>.';
+          return;
+        }
+        const appId = auth.app.options.appId;
+        const projectId = auth.app.options.projectId;
+        const apiKey = auth.app.options.apiKey;
+        const url = `https://content-firebaseappcheck.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/apps/${encodeURIComponent(appId)}:exchangeDebugToken?key=${encodeURIComponent(apiKey)}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ debug_token: token })
+        });
+        const text = await res.text();
+        if (res.ok) {
+          banner.style.display = 'none';
+          return;
+        } else {
+          let json; try { json = JSON.parse(text); } catch {}
+          const apiMsg = (json && json.error && json.error.message) ? json.error.message : (text || '');
+          let message = '';
+          if (res.status === 403) {
+            if (/UNREGISTERED|NOT_REGISTERED|NOT ALLOWED|DEBUG_TOKEN/i.test(apiMsg)) {
+              message = 'Token de depuración no registrado para esta app. Añádelo en Firebase Console → App Check → Debug Tokens.';
+            } else if (/API key|referer|restricted/i.test(apiMsg)) {
+              message = 'API key restringida para App Check o dominio. Ajusta restricciones en Google Cloud Console.';
+            } else {
+              message = 'Token rechazado (403). Registra el token y revisa restricciones de API key.';
+            }
+          } else if (res.status === 404) {
+            message = 'App/Proyecto no encontrados (404). Verifica <code>appId</code> y <code>projectId</code>.';
+          } else {
+            message = `Error ${res.status}. ${apiMsg}`;
+          }
+          banner.innerHTML = `⚠️ <b>App Check</b>: ${message}`;
+        }
+      } catch (e) {
+        banner.innerHTML = '⚠️ <b>App Check</b>: no se pudo diagnosticar. Revisa conexión/CSP.';
       }
-    } catch {}
+    }
+
+    (async () => {
+      try {
+        const ready = globalThis.__appCheckReady;
+        let show = false;
+        if (!ready || typeof ready.then !== 'function') {
+          show = true;
+        } else {
+          const token = await Promise.race([
+            ready,
+            new Promise(resolve => setTimeout(() => resolve(null), 3000))
+          ]);
+          if (!token || (token.length || 0) < 10) show = true;
+        }
+        if (show) { appCheckBanner.style.display = 'block'; diagnoseAppCheck(appCheckBanner); }
+      } catch {
+        try { appCheckBanner.style.display = 'block'; diagnoseAppCheck(appCheckBanner); } catch {}
+      }
+    })();
 
     // Exigir sesión y precargar datos (con modo preview y demo)
     const isPreview = new URLSearchParams(location.search).has('ide_webview_request_time');
@@ -434,6 +530,7 @@
         avatarPreview.src = data.avatarUrl;
         avatarPreview.classList.remove('hidden');
         avatarExistingUrl = data.avatarUrl;
+        try { avatarPreviewTop.src = data.avatarUrl; avatarPreviewTop.classList.remove('hidden'); } catch {}
         updateSaveButtonState();
       }
       // Precargar ubicaciones guardadas
@@ -450,6 +547,7 @@
       await setupMunicipalityAutocomplete();
       updateGenderDependentFields();
       updateSaveButtonState();
+      updateVisualStatus();
     });
 
     const avatarInput = document.getElementById("avatarInput");
@@ -632,6 +730,7 @@
         payload.notifyChannels = selected.length ? selected : ['email'];
         await setDoc(doc(db, "users", user.uid), payload, { merge: true });
         showToast(isComplete ? "Perfil guardado y completo. Queda pendiente de validación." : "Perfil guardado, pero incompleto. Complétalo para navegar.", isComplete ? "success" : "warning");
+        try { updateVisualStatus(); } catch {}
         // Si está incompleto, permanecer y mostrar aviso
         if (!isComplete) {
           validationRequiredBanner.classList.remove('hidden');
@@ -653,6 +752,48 @@
       try { await sendEmailVerification(user); showToast('Verificación reenviada', 'success'); }
       catch (e) { console.error(e); showToast('No se pudo reenviar', 'error'); }
     });
+
+    function computeCompletionPercent() {
+      const hasOrigin = !!originMunicipality && originMunicipality.trim().length > 0;
+      const hasAvatar = !!selectedFile || !!avatarExistingUrl || (!!avatarPreview.src && !avatarPreview.classList.contains('hidden'));
+      const galleryCount = (existingGalleryUrls?.length || 0) + (galleryFiles?.length || 0);
+      const hasGalleryMin = galleryCount >= 2;
+      const hasOccupation = occupationInput && occupationInput.value.trim().length > 0;
+      const hasRel = !!relationshipSelect.value;
+      const hasLF = !!lookingForSelect.value;
+      const hasBioMin = countWords(bioInput.value.trim()) >= 120;
+      const hasPaypalOk = storedGender === 'female' ? isValidEmail((paypalEmailInput?.value || '').trim()) : true;
+      const checks = [hasOrigin, hasAvatar, hasGalleryMin, hasOccupation, hasRel, hasLF, hasBioMin, hasPaypalOk];
+      const done = checks.filter(Boolean).length;
+      const percent = Math.round((done / checks.length) * 100);
+      return percent;
+    }
+
+    function updateVisualStatus() {
+      const p = computeCompletionPercent();
+      if (profileProgressBar) profileProgressBar.style.width = `${p}%`;
+      if (profileProgressText) profileProgressText.textContent = `Completitud ${p}%`;
+      const emailOk = !!(auth.currentUser && auth.currentUser.emailVerified);
+      chipEmailVerified?.classList.toggle('chip--success', emailOk);
+      chipEmailVerified?.classList.toggle('chip--warning', !emailOk);
+      chipEmailVerified && (chipEmailVerified.textContent = emailOk ? 'Email verificado' : 'Email sin verificar');
+      chipPhoneVerified?.classList.toggle('chip--success', phoneVerifiedFlag);
+      chipPhoneVerified?.classList.toggle('chip--warning', !phoneVerifiedFlag);
+      chipPhoneVerified && (chipPhoneVerified.textContent = phoneVerifiedFlag ? 'Teléfono verificado' : 'Teléfono sin verificar');
+      const isComplete = computeCompletionPercent() >= 100;
+      chipProfileComplete?.classList.toggle('chip--success', isComplete);
+      chipProfileComplete?.classList.toggle('chip--warning', !isComplete);
+      chipProfileComplete && (chipProfileComplete.textContent = isComplete ? 'Perfil completo' : 'Perfil incompleto');
+    }
+
+    const topVerifyEmailBtn = document.getElementById('topVerifyEmailBtn');
+    const topSendOtpBtn = document.getElementById('topSendOtpBtn');
+    const topSaveProfileBtn = document.getElementById('topSaveProfileBtn');
+    topVerifyEmailBtn?.addEventListener('click', async () => {
+      const user = auth.currentUser; if (!user) return; try { await sendEmailVerification(user); showToast('Verificación reenviada', 'success'); } catch { showToast('No se pudo reenviar', 'error'); }
+    });
+    topSendOtpBtn?.addEventListener('click', (e) => { e.preventDefault(); sendOtp(); });
+    topSaveProfileBtn?.addEventListener('click', (e) => { e.preventDefault(); document.getElementById('saveProfileBtn')?.click(); });
 
     // Logout
     logoutBtn.addEventListener('click', async () => {
@@ -702,6 +843,8 @@
     let originMunicipality = null;
     let existingGalleryUrls = [];
     let galleryFiles = [];
+    let originMapObj = null;
+    let originMarker = null;
 
     function setupMunicipalityAutocomplete() {
       try {
@@ -717,12 +860,33 @@
           });
           return;
         }
-        const auto = new google.maps.places.Autocomplete(input, { types: ['(cities)'], fields: ['formatted_address','name'] });
+        const auto = new google.maps.places.Autocomplete(input, { types: ['(cities)'], fields: ['formatted_address','name','geometry','place_id'] });
         auto.addListener('place_changed', () => {
           const p = auto.getPlace();
           const name = p?.name || p?.formatted_address || '';
           originMunicipality = name || null;
           document.getElementById('originSummary').textContent = name || '—';
+          try {
+            if (p && p.geometry && p.geometry.location) {
+              const loc = p.geometry.location;
+              const el = document.getElementById('originMap');
+              if (el) {
+                el.classList.remove('hidden');
+                el.style.height = '220px';
+                const center = { lat: loc.lat(), lng: loc.lng() };
+                if (!originMapObj) {
+                  originMapObj = new google.maps.Map(el, { center, zoom: 12, disableDefaultUI: true });
+                } else {
+                  originMapObj.setCenter(center);
+                }
+                if (!originMarker) {
+                  originMarker = new google.maps.Marker({ position: center, map: originMapObj });
+                } else {
+                  originMarker.setPosition(center);
+                }
+              }
+            }
+          } catch {}
           updateSaveButtonState();
         });
       } catch (e) {
@@ -792,6 +956,7 @@
       btn.disabled = !canSave;
       btn.classList.toggle('opacity-60', !canSave);
       btn.classList.toggle('cursor-not-allowed', !canSave);
+      try { updateVisualStatus(); } catch {}
     }
 
     // ===== OTP Phone Linking =====
@@ -879,6 +1044,49 @@
   </script>
 
   <!-- Guard opcional: asegura sesión; no redirige cuando ya estás en perfil -->
-  <script type="module" src="./js/guards.js"></script>
+  <script src="./js/guards.js"></script>
+  <script>
+    // Initialize components when ready
+    async function initializePerfilComponents() {
+      try {
+        // Wait for Firebase to be ready
+        await waitForFirebase();
+        
+        // Check if Firebase is available
+        if (typeof firebase === 'undefined') {
+          console.error('❌ Firebase no está disponible');
+          return;
+        }
+        
+        // Get Firebase app
+        const firebaseApp = firebase.app();
+        
+        // Initialize App Check Manager
+        const appCheckManager = new AppCheckManager(firebaseApp, {
+          siteKey: "6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2",
+          autoRefresh: true,
+          debugMode: true
+        });
+        
+        // Initialize Mobile Menu
+        const mobileMenu = new MobileMenu();
+        
+        // Initialize App Check with smart fallback
+        await appCheckManager.init();
+        
+        console.log('✅ Perfil: App Check Manager y Mobile Menu inicializados');
+        
+      } catch (error) {
+        console.error('Error inicializando componentes:', error);
+      }
+    }
+    
+    // Start initialization when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializePerfilComponents);
+    } else {
+      initializePerfilComponents();
+    }
+  </script>
 </body>
 </html>

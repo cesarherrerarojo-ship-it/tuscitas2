@@ -5,18 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="TuCitaSegura - Plataforma de citas seguras con verificación avanzada, suscripción mensual y sistema antidefault.">
   <meta name="theme-color" content="#0f172a">
-  <!-- Firebase App Check (reCAPTCHA v3) Site Key -->
-  <meta name="app_check_site_key" content="6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2">
-  <!-- App Check provider selection -->
-  <meta name="app_check_provider" content="v3">
-  
-  <!-- reCAPTCHA v3 Site Key -->
-  <meta name="recaptcha:sitekey" content="6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2">
   
   <title>TuCitaSegura - Citas Seguras sin Plantones</title>
 
   <!-- Tailwind CSS -->
   <link rel="stylesheet" href="styles.css">
+  <!-- Enhanced Animations -->
+  <link rel="stylesheet" href="css/enhanced-animations.css">
   
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
@@ -28,7 +23,43 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
-  <!-- reCAPTCHA v3 Script (se carga dinámicamente en JS cuando aplica) -->
+  <!-- Firebase Libraries -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-check-compat.js"></script>
+  
+  <!-- Ensure Firebase is loaded -->
+  <script>
+    // Wait for Firebase to be available
+    function waitForFirebaseGlobal() {
+      return new Promise((resolve) => {
+        const checkFirebase = () => {
+          if (typeof firebase !== 'undefined') {
+            console.log('✅ Firebase cargado globalmente');
+            resolve();
+          } else {
+            setTimeout(checkFirebase, 100);
+          }
+        };
+        checkFirebase();
+      });
+    }
+    
+    // Make Firebase available globally
+    window.waitForFirebaseGlobal = waitForFirebaseGlobal;
+  </script>
+  
+  <!-- Firebase Configuration -->
+  <script src="js/firebase-config-enterprise.js"></script>
+  
+  <!-- App Check Manager -->
+  <script src="js/app-check-manager.js"></script>
+  <!-- Mobile Menu Component -->
+  <script src="js/mobile-menu.js"></script>
+  <!-- Skeleton Loader -->
+  <script src="js/skeleton-loader.js"></script>
   
   <!-- Open Graph / Twitter -->
   <meta property="og:title" content="TuCitaSegura – Citas seguras sin plantones">
@@ -360,6 +391,12 @@
   </style>
 </head>
 <body>
+  <!-- App Check Status Banner -->
+  <div id="tcsRecaptchaBanner" class="hidden fixed top-4 right-4 z-50 bg-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg" style="display: none;">
+    <span class="font-medium">⚠️ App Check:</span> <span id="tcsRecaptchaBannerText"></span>
+  </div>
+  <!-- Skip navigation link for screen readers -->
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded-md z-50">Saltar al contenido principal</a>
   <!-- Toast Notifications -->
   <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
@@ -371,21 +408,28 @@
 
   <!-- Header / Navigation -->
   <!-- A fixed top navigation bar that stays visible on scroll. It provides quick access to login and registro. -->
-  <header class="fixed top-0 left-0 w-full glass backdrop-blur-xl z-50">
-    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+  <header class="fixed top-0 left-0 w-full glass backdrop-blur-xl z-50" role="banner">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16" role="navigation" aria-label="Navegación principal">
       <!-- Brand -->
       <div class="flex items-center gap-2">
         <i class="fas fa-heart-circle-check text-blue-400 text-2xl"></i>
         <span class="text-xl font-bold gradient-text">TuCitaSegura</span>
       </div>
       <!-- Desktop nav actions -->
-      <div class="hidden md:flex items-center gap-4">
-        <button id="navLoginBtn" class="glass px-5 py-2 rounded-full font-semibold hover:bg-white/20 transition-colors">Iniciar Sesión</button>
-        <button id="navRegisterBtn" class="btn-primary px-5 py-2 rounded-full font-semibold">Únete Gratis</button>
+      <div class="hidden md:flex items-center gap-6" role="menubar">
+        <a href="/index.html" class="hover:underline" role="menuitem" aria-label="Ir a página principal">Inicio</a>
+        <a href="/index.html?openmodal=1" class="hover:underline" role="menuitem" aria-label="Abrir formulario de registro">Registro</a>
+        <a href="/buscar.html?gender=female" class="hover:underline" role="menuitem" aria-label="Buscar chicas">Chicas</a>
+        <a href="/buscar.html?gender=male" class="hover:underline" role="menuitem" aria-label="Buscar chicos">Chicos</a>
+        <a href="/admin/dashboard.html" class="hover:underline" role="menuitem" aria-label="Panel de administración">Admin</a>
+        <button id="navLoginBtn" class="glass px-5 py-2 rounded-full font-semibold hover:bg-white/20 transition-colors" role="menuitem" aria-label="Iniciar sesión">Iniciar Sesión</button>
+        <button id="navRegisterBtn" class="btn-primary px-5 py-2 rounded-full font-semibold" role="menuitem" aria-label="Registrarse gratis">Únete Gratis</button>
       </div>
-      <!-- Mobile menu placeholder (optional implementation) -->
+      <!-- Mobile menu button -->
       <div class="md:hidden">
-        <!-- Aquí podría añadirse un menú desplegable para móviles -->
+        <button id="mobileMenuBtn" class="text-white hover:text-blue-400 transition-colors" aria-label="Abrir menú de navegación móvil" aria-expanded="false" aria-controls="mobile-menu">
+          <i class="fas fa-bars text-xl" aria-hidden="true"></i>
+        </button>
       </div>
     </nav>
   </header>
@@ -579,7 +623,7 @@
   </div>
 
   <!-- Main Content -->
-  <main class="min-h-screen flex flex-col items-center justify-center px-4 pt-32 pb-20">
+  <main id="main-content" class="min-h-screen flex flex-col items-center justify-center px-4 pt-32 pb-20">
     <div class="max-w-4xl mx-auto">
       <!-- Hero Section -->
       <div class="text-center mb-16 hero-bg">
@@ -768,25 +812,41 @@
   </footer>
 
   <!-- Firebase & reCAPTCHA Logic -->
-  <script type="module">
-  import { auth, db } from "./js/firebase-config-enterprise.js";
-    import { 
-      signInWithEmailAndPassword, 
-      createUserWithEmailAndPassword,
-      sendPasswordResetEmail,
-      sendEmailVerification,
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-    import { 
-      doc, 
-      setDoc, 
-      getDoc,
-      serverTimestamp 
-    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-  import { showToast } from "./js/utils.js";
+  <script>
+    // Wait for Firebase to be ready and use global objects
+    function waitForFirebase() {
+      return new Promise((resolve) => {
+        if (typeof firebase !== 'undefined' && window.firebaseConfig) {
+          resolve(window.firebaseConfig);
+        } else {
+          const checkInterval = setInterval(() => {
+            if (typeof firebase !== 'undefined' && window.firebaseConfig) {
+              clearInterval(checkInterval);
+              resolve(window.firebaseConfig);
+            }
+          }, 100);
+          
+          // Timeout after 10 seconds
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            console.error('❌ Firebase no se cargó en el tiempo esperado');
+            resolve(null);
+          }, 10000);
+        }
+      });
+    }
 
-    console.log("✅ Firebase listo vía módulos");
+    // Initialize Firebase functionality
+    async function initializeApp() {
+      const firebaseConfig = await waitForFirebase();
+      if (!firebaseConfig) {
+        console.error('❌ No se pudo cargar Firebase');
+        return;
+      }
+
+      const { auth, db } = firebaseConfig;
+      
+      console.log("✅ Firebase listo vía objetos globales");
 
     // Perfil incompleto: desactivar enlaces y mostrar banner
     const profileIncompleteBanner = document.getElementById("profileIncompleteBanner");
@@ -808,32 +868,13 @@
         anchors.forEach(a => {
           const href = (a.getAttribute('href') || '').trim();
           const isExternal = href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:');
-          const isHash = href === '#' || href.startsWith('#');
-          const isIndex = href === '/' || href === '/index.html' || href === 'index.html' || href === '';
-          const isPerfil = href === '/perfil.html' || href === 'perfil.html';
-
-          const shouldBlock = restrict && !isExternal && !isHash && !isIndex && !isPerfil;
-
-          if (shouldBlock) {
-            if (!a.dataset.blocked) {
-              a.dataset.blocked = '1';
-              a.classList.add('disabled-link');
-              a.setAttribute('aria-disabled', 'true');
-              a.title = 'Completa tu perfil para acceder';
-              a.addEventListener('click', onBlockedLinkClick);
-            }
-          } else {
-            if (a.dataset.blocked) {
-              a.classList.remove('disabled-link');
-              a.removeAttribute('aria-disabled');
-              a.removeAttribute('title');
-              a.removeEventListener('click', onBlockedLinkClick);
-              delete a.dataset.blocked;
-            }
+          if (!isExternal && !href.startsWith('#') && href !== '/' && href !== '/index.html' && href !== '/perfil.html') {
+            a.style.pointerEvents = restrict ? 'none' : 'auto';
+            a.style.opacity = restrict ? '0.5' : '1';
           }
         });
       } catch (e) {
-        console.warn('No se pudo aplicar la restricción de enlaces', e);
+        console.warn("Error al restringir enlaces:", e);
       }
     }
 
@@ -1002,7 +1043,7 @@
       }
       // fetch extra info
       try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const userDoc = await firebase.firestore.getDoc(firebase.firestore.doc(db, "users", user.uid));
         if (userDoc.exists()) {
           const data = userDoc.data();
           profileAlias.textContent = data.alias || "—";
@@ -1101,7 +1142,7 @@
     // Redirección post-autenticación según perfil
     async function afterAuthRedirect(user) {
       try {
-        const snap = await getDoc(doc(db, "users", user.uid));
+        const snap = await firebase.firestore.getDoc(firebase.firestore.doc(db, "users", user.uid));
         const data = snap.exists() ? snap.data() : {};
         const dest = !data.profileComplete ? "/perfil.html" : "/";
         location.href = dest;
@@ -1118,7 +1159,7 @@
 
         await assertHuman("login");
 
-        const cred = await signInWithEmailAndPassword(auth, email, password);
+        const cred = await firebase.auth.signInWithEmailAndPassword(auth, email, password);
 
         loginMsg.textContent = "✅ Login exitoso";
         showToast("¡Bienvenido de nuevo!", "success");
@@ -1154,27 +1195,27 @@
 
         await assertHuman("register");
 
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        const cred = await firebase.auth.createUserWithEmailAndPassword(auth, email, password);
 
-        await setDoc(doc(db, "users", cred.user.uid), {
+        await firebase.firestore.setDoc(firebase.firestore.doc(db, "users", cred.user.uid), {
           email: email,
           gender: gender,
           alias: alias,
-          createdAt: serverTimestamp(),
+          createdAt: firebase.firestore.serverTimestamp(),
           reputation: 0,
           level: "Oro",
           stats: { citas: 0, defaults: 0 },
-          lastLogin: serverTimestamp(),
+          lastLogin: firebase.firestore.serverTimestamp(),
           // Como alias y género se piden en el registro, el perfil queda completo
           profileComplete: true
         });
 
         // Crear documento privado inicial
         try {
-          await setDoc(doc(db, "users_private", cred.user.uid), {
+          await firebase.firestore.setDoc(firebase.firestore.doc(db, "users_private", cred.user.uid), {
             phoneVerified: false,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
+            createdAt: firebase.firestore.serverTimestamp(),
+            updatedAt: firebase.firestore.serverTimestamp()
           });
         } catch (e) {
           console.warn("No se pudo crear users_private inicial", e);
@@ -1182,7 +1223,7 @@
 
         // Envía un correo de verificación
         try {
-          await sendEmailVerification(cred.user);
+          await firebase.auth.sendEmailVerification(cred.user);
           console.log("✅ Email de verificación enviado a", email);
         } catch (e) {
           console.error("Error enviando email de verificación", e);
@@ -1220,7 +1261,7 @@
         forgotBtnText.textContent = "Enviando...";
 
         await assertHuman("forgot_password");
-        await sendPasswordResetEmail(auth, email);
+        await firebase.auth.sendPasswordResetEmail(auth, email);
 
         forgotMsg.textContent = "✅ Email enviado";
         showToast("Revisa tu email para restablecer contraseña", "success");
@@ -1292,7 +1333,7 @@
       const user = auth.currentUser;
       if (!user) return;
       try {
-        await sendEmailVerification(user);
+        await firebase.auth.sendEmailVerification(user);
         profileMessage.textContent = "✅ Email de verificación enviado. Revisa tu bandeja de entrada.";
         profileMessage.classList.remove("text-red-400");
         profileMessage.classList.add("text-green-400");
@@ -1307,7 +1348,7 @@
     // Logout from inside modal
     modalLogoutBtn.addEventListener("click", async () => {
       try {
-        await signOut(auth);
+        await firebase.auth.signOut(auth);
         hideAuthModal();
         hideProfileSectionFn();
         showToast("Sesión cerrada", "info");
@@ -1372,7 +1413,7 @@
     });
 
     // Listen to auth changes
-    onAuthStateChanged(auth, (user) => {
+    firebase.auth.onAuthStateChanged(auth, (user) => {
       if (user) {
         console.log("✅ Usuario autenticado:", user.email);
         heroLoginBtn.textContent = "Mi Perfil";
@@ -1392,7 +1433,7 @@
         // Consultar profileComplete y aplicar restricciones de enlaces
         (async () => {
           try {
-            const snap = await getDoc(doc(db, 'users', user.uid));
+            const snap = await firebase.firestore.getDoc(firebase.firestore.doc(db, 'users', user.uid));
             const data = snap.exists() ? snap.data() : {};
             const incomplete = !data.profileComplete;
             setProfileLinkRestrictions(incomplete);
@@ -1438,8 +1479,211 @@
     } else {
       console.log("ℹ️ reCAPTCHA desactivado en modo preview");
     }
+
+    // Show toast notification function
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      if (toast) {
+        toast.textContent = message;
+        toast.className = `toast ${type}`;
+        toast.classList.add('show');
+        setTimeout(() => {
+          toast.classList.remove('show');
+        }, 3000);
+      } else {
+        console.log(`Toast: ${message}`);
+      }
+    }
+
+    // Initialize the app
+    initializeApp();
   </script>
   <!-- Guardia de sesión/perfil/teléfono: redirige usuarios autenticados sin phoneVerified -->
-  <script type="module" src="./js/guards.js"></script>
+  <script src="./js/guards.js"></script>
+  <script>
+    async function diagnoseAppCheck(banner) {
+      try {
+        const auth = window.firebaseAuth;
+        if (!auth) {
+          banner.innerHTML = '⚠️ <b>App Check</b>: Firebase no está disponible.';
+          return;
+        }
+        
+        const token = (localStorage.getItem('firebaseAppCheckDebugToken') || (typeof self.FIREBASE_APPCHECK_DEBUG_TOKEN === 'string' ? self.FIREBASE_APPCHECK_DEBUG_TOKEN : '')).trim();
+        if (!token) {
+          banner.innerHTML = '⚠️ <b>App Check</b>: sin token de depuración. Genera y registra uno en Firebase Console y recarga con <code>?debugtoken=EL_TOKEN</code>.';
+          return;
+        }
+        const appId = auth.app.options.appId;
+        const projectId = auth.app.options.projectId;
+        const apiKey = auth.app.options.apiKey;
+        const url = `https://content-firebaseappcheck.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/apps/${encodeURIComponent(appId)}:exchangeDebugToken?key=${encodeURIComponent(apiKey)}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ debug_token: token })
+        });
+        const text = await res.text();
+        if (res.ok) {
+          // Oculta el banner si el intercambio fue exitoso
+          banner.style.display = 'none';
+          return;
+        } else {
+          let json; try { json = JSON.parse(text); } catch {}
+          const apiMsg = (json && json.error && json.error.message) ? json.error.message : (text || '');
+          let message = '';
+          if (res.status === 403) {
+            if (/UNREGISTERED|NOT_REGISTERED|NOT ALLOWED|DEBUG_TOKEN/i.test(apiMsg)) {
+              message = 'Token de depuración no registrado para esta app. Añádelo en Firebase Console → App Check → Debug Tokens.';
+            } else if (/API key|referer|restricted/i.test(apiMsg)) {
+              message = 'API key restringida para App Check o dominio. Ajusta restricciones en Google Cloud Console.';
+            } else {
+              message = 'Token rechazado (403). Registra el token y revisa restricciones de API key.';
+            }
+          } else if (res.status === 404) {
+            message = 'App/Proyecto no encontrados (404). Verifica <code>appId</code> y <code>projectId</code>.';
+          } else {
+            message = `Error ${res.status}. ${apiMsg}`;
+          }
+          banner.innerHTML = `⚠️ <b>App Check</b>: ${message}`;
+        }
+      } catch (e) {
+        banner.innerHTML = '⚠️ <b>App Check</b>: no se pudo diagnosticar. Revisa conexión/CSP.';
+      }
+    }
+
+    (async () => {
+      const banner = document.getElementById('tcsRecaptchaBanner');
+      if (!banner) {
+        console.warn('Banner de App Check no encontrado');
+        return;
+      }
+      
+      let show = false;
+      try {
+        const ready = globalThis.__appCheckReady;
+        if (!ready || typeof ready.then !== 'function') {
+          show = true;
+        } else {
+          const token = await Promise.race([
+            ready,
+            new Promise(resolve => setTimeout(() => resolve(null), 3000))
+          ]);
+          if (!token || (token.length || 0) < 10) show = true;
+        }
+      } catch (error) {
+        show = true;
+      }
+      if (show) {
+        banner.style.display = 'block';
+        diagnoseAppCheck(banner);
+      }
+    })();
+  </script>
+  <script>
+    // Wait for Firebase to load
+    function waitForFirebase() {
+      return new Promise(resolve => {
+        if (typeof firebase !== 'undefined') resolve();
+        else {
+          const checkInterval = setInterval(() => {
+            if (typeof firebase !== 'undefined') {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 100);
+          // Timeout after 10 seconds
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            resolve();
+          }, 10000);
+        }
+      });
+    }
+
+    // Wait for scripts to load and initialize components
+    function waitForComponents() {
+      return Promise.all([
+        new Promise(resolve => {
+          if (typeof AppCheckManager !== 'undefined') resolve();
+          else {
+            const checkInterval = setInterval(() => {
+              if (typeof AppCheckManager !== 'undefined') {
+                clearInterval(checkInterval);
+                resolve();
+              }
+            }, 100);
+            // Timeout after 5 seconds
+            setTimeout(() => {
+              clearInterval(checkInterval);
+              resolve();
+            }, 5000);
+          }
+        }),
+        new Promise(resolve => {
+          if (typeof MobileMenu !== 'undefined') resolve();
+          else {
+            const checkInterval = setInterval(() => {
+              if (typeof MobileMenu !== 'undefined') {
+                clearInterval(checkInterval);
+                resolve();
+              }
+            }, 100);
+            // Timeout after 5 seconds
+            setTimeout(() => {
+              clearInterval(checkInterval);
+              resolve();
+            }, 5000);
+          }
+        })
+      ]);
+    }
+
+    // Initialize components when ready
+    async function initializeComponents() {
+      try {
+        // Wait for Firebase and components to load
+        await waitForFirebase();
+        await waitForComponents();
+        
+        // Check if Firebase is available
+        if (typeof firebase === 'undefined') {
+          console.error('❌ Firebase no está disponible');
+          return;
+        }
+        
+        // Get Firebase app
+        const firebaseApp = firebase.app();
+        
+        // Initialize App Check Manager
+        const appCheckManager = new AppCheckManager(firebaseApp, {
+          siteKey: "6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2",
+          autoRefresh: true,
+          debugMode: true
+        });
+        
+        // Initialize Mobile Menu
+        const mobileMenu = new MobileMenu();
+        
+        // Initialize App Check with smart fallback
+        await appCheckManager.init();
+        
+        // Show status banner
+        appCheckManager.showStatusBanner();
+        
+        console.log('✅ App Check Manager y Mobile Menu inicializados');
+        
+      } catch (error) {
+        console.error('Error inicializando componentes:', error);
+      }
+    }
+    
+    // Start initialization when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeComponents);
+    } else {
+      initializeComponents();
+    }
+  </script>
 </body>
 </html>

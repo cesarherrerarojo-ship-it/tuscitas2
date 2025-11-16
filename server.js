@@ -1,8 +1,43 @@
 import 'dotenv/config';
 import express from 'express';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import path from 'path';
+import { promises as fs } from 'fs';
 
 const app = express();
 app.use(express.json());
+
+// Inyección condicional de metas de App Check y reCAPTCHA solo en entorno local
+// Controlado por env: APP_ENV=local | NODE_ENV!=='production' y APP_CHECK_DEBUG_TOKEN
+app.get(['/', '/*.html', '/webapp/*.html'], async (req, res, next) => {
+  try {
+    const isLocal = process.env.APP_ENV === 'local' || process.env.NODE_ENV !== 'production';
+    const token = process.env.APP_CHECK_DEBUG_TOKEN;
+    if (!isLocal) return next();
+
+    // Solo aplicamos si hay un archivo HTML dentro de /public
+    const rel = req.path === '/' ? 'index.html' : req.path.replace(/^\//, '');
+    const filePath = path.join(process.cwd(), 'public', rel);
+    try {
+      const html = await fs.readFile(filePath, 'utf8');
+      // Evitar duplicados si ya existe en el HTML
+      const hasAppCheck = html.includes('name="app_check_debug_token"');
+      const hasRecaptchaDisable = html.includes('name="recaptcha:disable"');
+      const metas = [];
+      if (token && !hasAppCheck) metas.push(`<meta name="app_check_debug_token" content="${token}">`);
+      if (!hasRecaptchaDisable) metas.push('<meta name="recaptcha:disable" content="true">');
+      if (metas.length === 0) return res.type('html').send(html);
+
+      const patched = html.replace(/<head(.*?)>/i, (m) => `${m}\n    ${metas.join('\n    ')}`);
+      return res.type('html').send(patched);
+    } catch (e) {
+      // Si no se encuentra el archivo o falla la lectura, continuar a static
+      return next();
+    }
+  } catch {
+    return next();
+  }
+});
 
 app.post('/api/verify-recaptcha', async (req, res) => {
   try {
@@ -70,6 +105,24 @@ app.get('/api/deposit-policy', (req, res) => {
 
 // Serve static files from /public (patched index.html is already there)
 app.use(express.static('public'));
+
+// Proxy del emulador de Firebase Auth hacia el mismo origen
+// Esto permite que el frontend se conecte al emulador usando http://localhost:3000
+// y evita bloqueos por puertos externos o CORS en entornos de preview.
+try {
+  const EMU_TARGET = 'http://localhost:9099';
+  app.use(
+    '/identitytoolkit.googleapis.com',
+    createProxyMiddleware({ target: EMU_TARGET, changeOrigin: true, logLevel: 'silent' })
+  );
+  app.use(
+    '/securetoken.googleapis.com',
+    createProxyMiddleware({ target: EMU_TARGET, changeOrigin: true, logLevel: 'silent' })
+  );
+  console.log('Auth Emulator proxy habilitado hacia', EMU_TARGET);
+} catch (e) {
+  console.warn('No se pudo habilitar el proxy del Auth Emulator', e);
+}
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {

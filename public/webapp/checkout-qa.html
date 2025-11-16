@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="recaptcha:disable" content="true" />
+    <title>QA Checkout PayPal (Orders v6)</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; }
+      .row { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+      label { display: block; font-size: 0.9rem; color: #334; margin-bottom: 0.25rem; }
+      input { padding: 0.5rem; width: 360px; max-width: 100%; }
+      button { padding: 0.6rem 1rem; background: #0d6efd; color: white; border: none; border-radius: 6px; cursor: pointer; }
+      button:disabled { opacity: 0.6; cursor: not-allowed; }
+      .note { font-size: 0.9rem; color: #555; }
+      #status { margin-top: 1rem; }
+    </style>
+  </head>
+  <body>
+    <h1>QA Checkout PayPal (sin login)</h1>
+    <p class="note">Esta página usa los endpoints backend <code>/paypal-api</code> para crear y capturar órdenes. Carga el SDK de PayPal dinámicamente.</p>
+
+    <div class="row">
+      <div>
+        <label for="clientId">PayPal Client ID (sandbox o live)</label>
+        <input id="clientId" placeholder="AUV2..." />
+      </div>
+      <div>
+        <label for="amount">Monto (EUR)</label>
+        <input id="amount" placeholder="1.00" value="1.00" />
+      </div>
+    </div>
+
+    <div class="row">
+      <button id="loadBtn">Cargar SDK y Renderizar botón</button>
+      <button id="resetBtn" style="background:#6c757d">Reset</button>
+    </div>
+
+    <div id="paypal-checkout-button"></div>
+    <div id="status"></div>
+
+    <script>
+      const loadBtn = document.getElementById('loadBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const statusEl = document.getElementById('status');
+      const clientIdInput = document.getElementById('clientId');
+      const amountInput = document.getElementById('amount');
+
+      function setStatus(msg) { statusEl.textContent = msg; }
+
+      function injectSdk(clientId) {
+        return new Promise((resolve, reject) => {
+          const existing = document.querySelector('script[data-qa-sdk="paypal"]');
+          if (existing) existing.remove();
+          const s = document.createElement('script');
+          const params = new URLSearchParams(window.location.search);
+          const override = params.get('sdk-params');
+          const defaultParams = `client-id=${encodeURIComponent(clientId)}&components=buttons&currency=EUR`;
+          s.src = `https://www.paypal.com/sdk/js?${override || defaultParams}`;
+          s.async = true;
+          s.dataset.qaSdk = 'paypal';
+          s.onload = () => resolve();
+          s.onerror = (e) => reject(e);
+          document.head.appendChild(s);
+        });
+      }
+
+      async function renderButtons(amount) {
+        if (!window.paypal || !window.paypal.Buttons) {
+          throw new Error('SDK de PayPal no cargado');
+        }
+        document.getElementById('paypal-checkout-button').innerHTML = '';
+        await window.paypal.Buttons({
+          style: { shape: 'pill', layout: 'vertical' },
+          createOrder: async function (data, actions) {
+            const body = {
+              intent: 'CAPTURE',
+              purchase_units: [
+                { amount: { currency_code: 'EUR', value: String(amount || '1.00') } }
+              ]
+            };
+            try {
+              const res = await fetch('/paypal-api/checkout/orders/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+              });
+              const dataJson = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error((dataJson && dataJson.error) || 'Error creando la orden');
+              return dataJson.orderId || dataJson.id;
+            } catch (err) {
+              console.warn('Fallo backend, usando fallback cliente:', err && err.message);
+              setStatus('Backend no disponible, usando fallback cliente.');
+              return actions.order.create(body);
+            }
+          },
+          onApprove: async function (data, actions) {
+            try {
+              const res = await fetch('/paypal-api/checkout/orders/capture', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId: data.orderID })
+              });
+              const cap = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error((cap && cap.error) || 'Error capturando la orden');
+              console.log('Captura OK (backend)', cap);
+              setStatus('Pago capturado correctamente (backend).');
+              alert('Pago capturado (backend).');
+            } catch (e) {
+              console.warn('Fallo backend en captura, usando fallback cliente:', e && e.message);
+              try {
+                const cap2 = await actions.order.capture();
+                console.log('Captura OK (cliente)', cap2);
+                setStatus('Pago capturado correctamente (cliente).');
+                alert('Pago capturado (cliente).');
+              } catch (e2) {
+                console.error(e2);
+                setStatus('Error al capturar (cliente): ' + (e2 && e2.message ? e2.message : 'desconocido'));
+              }
+            }
+          },
+          onError: function (err) {
+            console.error(err);
+            setStatus('Error en checkout: ' + (err && err.message ? err.message : 'desconocido'));
+          }
+        }).render('#paypal-checkout-button');
+      }
+
+      loadBtn.addEventListener('click', async () => {
+        const clientId = clientIdInput.value.trim();
+        const amount = amountInput.value.trim();
+        if (!clientId) { setStatus('Ingresa el Client ID.'); return; }
+        loadBtn.disabled = true;
+        setStatus('Cargando SDK de PayPal...');
+        try {
+          await injectSdk(clientId);
+          setStatus('SDK cargado. Renderizando botón...');
+          await renderButtons(amount);
+          setStatus('Botón renderizado. Continúa con el flujo.');
+        } catch (e) {
+          console.error(e);
+          setStatus('No se pudo cargar el SDK: ' + (e && e.message ? e.message : 'error'));
+        } finally {
+          loadBtn.disabled = false;
+        }
+      });
+
+      resetBtn.addEventListener('click', () => {
+        clientIdInput.value = '';
+        amountInput.value = '1.00';
+        document.getElementById('paypal-checkout-button').innerHTML = '';
+        const existing = document.querySelector('script[data-qa-sdk="paypal"]');
+        if (existing) existing.remove();
+        setStatus('Reset completado.');
+      });
+
+      (function presetFromQuery() {
+        const params = new URLSearchParams(window.location.search);
+        const qClientId = params.get('client-id') || params.get('clientId');
+        const qAmount = params.get('amount');
+        const qAuto = params.get('auto');
+        const qSdkParams = params.get('sdk-params');
+        if (qClientId) clientIdInput.value = qClientId;
+        if (qAmount) amountInput.value = qAmount;
+        const shouldAuto = qAuto === '1' || qAuto === 'true';
+        if (shouldAuto && clientIdInput.value) {
+          loadBtn.click();
+        }
+        if (qSdkParams) {
+          const sdkUrl = `https://www.paypal.com/sdk/js?${qSdkParams}`;
+          const info = document.createElement('div');
+          info.className = 'note';
+          info.textContent = `SDK override activo: ${sdkUrl}`;
+          document.body.insertBefore(info, document.getElementById('paypal-checkout-button'));
+        }
+      })();
+    </script>
+  </body>
+</html>

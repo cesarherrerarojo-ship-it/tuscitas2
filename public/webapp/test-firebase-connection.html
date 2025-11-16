@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Diagnóstico Firebase</title>
+  <!-- App Check (reCAPTCHA v3) meta tags para inicialización coherente -->
+  <meta name="app_check_site_key" content="6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2" />
+  <meta name="app_check_provider" content="v3" />
+  <meta name="debugtoken" content="" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; max-width: 800px; }
+    .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+    .ok { color: #0a7f33; }
+    .warn { color: #b53; }
+    code { background: #f6f8fa; padding: 2px 6px; border-radius: 4px; }
+    button { padding: 8px 12px; border: 1px solid #999; border-radius: 6px; background: #fff; cursor: pointer; }
+    button:hover { background: #f2f2f2; }
+    .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <h1>Prueba de conexión Firebase</h1>
+  <div class="card">
+    <div class="row">
+      <strong>Origen:</strong>
+      <span id="origin" class="mono"></span>
+    </div>
+    <div class="row">
+      <strong>Modo emulador:</strong>
+      <span id="emu" class="mono"></span>
+    </div>
+    <div class="row">
+      <strong>Debug token actual:</strong>
+      <span id="dbgToken" class="mono"></span>
+    </div>
+    <div class="row">
+      <button id="btnCheckApp">Verificar App Check token</button>
+      <span id="appCheckStatus"></span>
+    </div>
+    <div class="row">
+      <strong>Debug token manual:</strong>
+      <input id="dbgInput" class="mono" type="text" placeholder="Pega tu debug token" style="flex:1" />
+      <button id="btnUseDbg">Usar token y recargar</button>
+      <button id="btnExchange">Probar intercambio</button>
+    </div>
+    <div class="row">
+      <button id="btnPingAuth">SignUp (emulador/proxy)</button>
+      <button id="btnSignIn">SignIn (emulador/proxy)</button>\n    <div style="font-size: 12px; color: #666;">Email de prueba: <span id="lastEmail">(generado en signUp)</span></div>\n    <span id="authStatus"></span>
+    </div>
+  </div>
+
+  <!-- Inicialización Firebase (usa query ?useEmu=1&debugtoken=TOKEN para desarrollo) -->
+  <script type="module">
+    import { auth } from "/js/firebase-config-enterprise.js";
+    const qs = new URLSearchParams(location.search);
+    const useEmu = qs.get('useEmu') === '1' || qs.get('useEmu') === 'true';
+    const providedDebugToken = qs.get('debugtoken') || '';
+    document.getElementById('origin').textContent = location.origin;
+    document.getElementById('emu').textContent = useEmu ? 'ON' : 'OFF';
+    document.getElementById('dbgToken').textContent = providedDebugToken || (localStorage.getItem('firebaseAppCheckDebugToken') || '(no establecido)');
+
+    const btnCheckApp = document.getElementById('btnCheckApp');
+    const appCheckStatus = document.getElementById('appCheckStatus');
+    btnCheckApp.addEventListener('click', async () => {
+      appCheckStatus.textContent = 'Verificando…';
+      try {
+        if (globalThis.__appCheckReady && typeof globalThis.__appCheckReady.then === 'function') {
+          const token = await globalThis.__appCheckReady;
+          if (token && token.length > 10) {
+            appCheckStatus.textContent = 'OK';
+            appCheckStatus.className = 'ok';
+          } else {
+            appCheckStatus.textContent = 'Token vacío';
+            appCheckStatus.className = 'warn';
+          }
+        } else {
+          appCheckStatus.textContent = 'App Check no inicializado';
+          appCheckStatus.className = 'warn';
+        }
+      } catch (e) {
+        appCheckStatus.textContent = 'Error: ' + (e?.message || e);
+        appCheckStatus.className = 'warn';
+      }
+    });
+
+    // UI para usar/registrar debug token y probar intercambio
+    const dbgInput = document.getElementById('dbgInput');
+    const btnUseDbg = document.getElementById('btnUseDbg');
+    const btnExchange = document.getElementById('btnExchange');
+    const exchangeStatus = document.createElement('div');
+    exchangeStatus.className = 'mono';
+    exchangeStatus.style.margin = '8px 0 0 0';
+    document.querySelector('.card').appendChild(exchangeStatus);
+
+    btnUseDbg.addEventListener('click', () => {
+      const token = (dbgInput.value || '').trim();
+      if (!token) { alert('Pega un debug token'); return; }
+      try { localStorage.setItem('firebaseAppCheckDebugToken', token); } catch {}
+      try { self.FIREBASE_APPCHECK_DEBUG_TOKEN = token; } catch {}
+      location.reload();
+    });
+
+    btnExchange.addEventListener('click', async () => {
+      exchangeStatus.textContent = 'Intercambiando…';
+      try {
+        const token = (dbgInput.value || '').trim() || (localStorage.getItem('firebaseAppCheckDebugToken') || '');
+        if (!token) { exchangeStatus.textContent = 'Sin token'; exchangeStatus.className = 'warn mono'; return; }
+        // Derivar parámetros desde la app
+        const appId = auth.app.options.appId;
+        const projectId = auth.app.options.projectId;
+        const apiKey = auth.app.options.apiKey;
+        const url = `https://content-firebaseappcheck.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/apps/${encodeURIComponent(appId)}:exchangeDebugToken?key=${encodeURIComponent(apiKey)}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ debug_token: token })
+        });
+        const body = await res.text();
+        if (res.ok) {
+          let json = {};
+          try { json = JSON.parse(body); } catch {}
+          const len = (json?.token || '').length;
+          exchangeStatus.textContent = `OK (${res.status}) tokenLen=${len}`;
+          exchangeStatus.className = 'ok mono';
+        } else {
+          exchangeStatus.textContent = `HTTP ${res.status} ${body}`;
+          exchangeStatus.className = 'warn mono';
+        }
+      } catch (e) {
+        exchangeStatus.textContent = 'Error: ' + (e?.message || e);
+        exchangeStatus.className = 'warn mono';
+      }
+    });
+
+    const btnPingAuth = document.getElementById('btnPingAuth');
+    const authStatus = document.getElementById('authStatus');
+    btnPingAuth.addEventListener('click', async () => {
+      authStatus.textContent = 'Llamando…';
+      try {
+        // Petición a endpoint soportado por emulador: accounts:signUp
+        const email = `test-${Date.now()}@example.com`;
+        const password = 'Test1234!';
+        const payload = { email, password, returnSecureToken: true };
+        const url = '/identitytoolkit.googleapis.com/v1/accounts:signUp?key=' +
+          encodeURIComponent('AIzaSyAgFcoHwoBpo80rlEHL2hHVZ2DqtjWXh2s');
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const json = await res.json().catch(() => ({}));
+          authStatus.textContent = 'OK (' + res.status + ') user=' + (json.localId || 'n/a');
+          authStatus.className = 'ok';
+        } else {
+          const txt = await res.text();
+          authStatus.textContent = 'HTTP ' + res.status + ' ' + txt;
+          authStatus.className = 'warn';
+        }
+      } catch (e) {
+        authStatus.textContent = 'Error: ' + (e?.message || e);
+        authStatus.className = 'warn';
+      }
+    });
+  </script>
+</body>
+</html>
+

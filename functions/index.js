@@ -362,3 +362,51 @@ exports.syncChatACL = onDocumentWritten({ region: 'europe-west1', document: 'con
     console.error('syncChatACL error', e);
   }
 });
+
+
+// ================= PayPal Checkout v6 endpoints =================
+function getPaypalBaseUrl(mode) { return mode === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'; }
+function setCors(res) { res.set('Access-Control-Allow-Origin','*'); res.set('Access-Control-Allow-Methods','POST, OPTIONS'); res.set('Access-Control-Allow-Headers','Content-Type, Authorization'); }
+
+exports.createPaypalOrder = onRequest({ region: 'europe-west1' }, async (req, res) => {
+  setCors(res);
+  if (req.method === 'OPTIONS') return res.status(204).send('');
+  if (req.method !== 'POST') return res.status(405).json({ error: 'method-not-allowed' });
+  try {
+    const paypalMode = process.env.PAYPAL_MODE || 'sandbox';
+    const paypalClientId = process.env.PAYPAL_CLIENT_ID;
+    const paypalSecret = process.env.PAYPAL_SECRET;
+    if (!paypalClientId || !paypalSecret) return res.status(500).json({ error: 'PayPal credentials not configured' });
+    const baseUrl = getPaypalBaseUrl(paypalMode);
+    const tokenResp = await fetch(`${baseUrl}/v1/oauth2/token`, { method: 'POST', headers: { Authorization: 'Basic ' + Buffer.from(`${paypalClientId}:${paypalSecret}`).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=client_credentials' });
+    if (!tokenResp.ok) { const errText = await tokenResp.text(); return res.status(500).json({ error: 'Failed to get access token', details: errText }); }
+    const { access_token } = await tokenResp.json();
+    const orderPayload = req.body && Object.keys(req.body).length ? req.body : { intent: 'CAPTURE', purchase_units: [{ amount: { currency_code: 'EUR', value: '10.00' } }] };
+    const orderResp = await fetch(`${baseUrl}/v2/checkout/orders`, { method: 'POST', headers: { Authorization: `Bearer ${access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(orderPayload) });
+    const orderData = await orderResp.json();
+    if (!orderResp.ok) return res.status(orderResp.status).json(orderData);
+    return res.status(200).json({ id: orderData.id, orderId: orderData.id, status: orderData.status });
+  } catch (e) { console.error('[createPaypalOrder] Error', e); return res.status(500).json({ error: 'internal-server-error' }); }
+});
+
+exports.capturePaypalOrder = onRequest({ region: 'europe-west1' }, async (req, res) => {
+  setCors(res);
+  if (req.method === 'OPTIONS') return res.status(204).send('');
+  if (req.method !== 'POST') return res.status(405).json({ error: 'method-not-allowed' });
+  try {
+    const paypalMode = process.env.PAYPAL_MODE || 'sandbox';
+    const paypalClientId = process.env.PAYPAL_CLIENT_ID;
+    const paypalSecret = process.env.PAYPAL_SECRET;
+    if (!paypalClientId || !paypalSecret) return res.status(500).json({ error: 'PayPal credentials not configured' });
+    const baseUrl = getPaypalBaseUrl(paypalMode);
+    const tokenResp = await fetch(`${baseUrl}/v1/oauth2/token`, { method: 'POST', headers: { Authorization: 'Basic ' + Buffer.from(`${paypalClientId}:${paypalSecret}`).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=client_credentials' });
+    if (!tokenResp.ok) { const errText = await tokenResp.text(); return res.status(500).json({ error: 'Failed to get access token', details: errText }); }
+    const { access_token } = await tokenResp.json();
+    const { orderId } = req.body || {};
+    if (!orderId) return res.status(400).json({ error: 'missing-orderId' });
+    const captureResp = await fetch(`${baseUrl}/v2/checkout/orders/${orderId}/capture`, { method: 'POST', headers: { Authorization: `Bearer ${access_token}`, 'Content-Type': 'application/json' } });
+    const captureData = await captureResp.json();
+    if (!captureResp.ok) return res.status(captureResp.status).json(captureData);
+    return res.status(200).json(captureData);
+  } catch (e) { console.error('[capturePaypalOrder] Error', e); return res.status(500).json({ error: 'internal-server-error' }); }
+});

@@ -13,51 +13,28 @@
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: '#0F172A',
-            accent: '#0ea5e9',
-            blue: { 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 700: '#0369a1' }
-          },
-          fontFamily: { inter: ['Inter', 'system-ui', 'sans-serif'] },
-        }
-      }
-    }
-  </script>
-  <style>
-    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 100%); }
-    .glass { background: rgba(255,255,255,0.08); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
-    .gradient-text { background: linear-gradient(135deg, #7dd3fc, #0ea5e9, #38bdf8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-    .btn-primary { background: linear-gradient(135deg, #0ea5e9, #0369a1); box-shadow: 0 8px 24px rgba(14,165,233,0.2); transition:all 0.3s ease; }
-    .btn-primary:hover { transform: translateY(-2px); }
-    .faq-item details[open] summary ~ * { animation: sweep .5s ease-in-out; }
-    @keyframes sweep { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    .faq-item summary::-webkit-details-marker { display: none; }
-  </style>
+  <link rel="stylesheet" href="/styles.css">
+  
   <link rel="icon" href="/favicon.ico">
   <meta name="color-scheme" content="dark">
   <meta name="mobile-web-app-capable" content="yes">
 </head>
 <body class="text-white min-h-screen">
 
-  <header class="w-full top-0 z-50 glass">
-    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16" role="navigation">
-      <a href="/index.html" class="flex items-center gap-3">
+  <header class="fixed top-0 left-0 w-full glass backdrop-blur-xl z-50">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16" role="navigation">
+      <a href="/index.html" class="flex items-center gap-2">
         <i class="fa-solid fa-heart-circle-check text-blue-400 text-2xl"></i>
-        <span class="font-black text-xl text-blue-300">TuCitaSegura</span>
+        <span class="text-xl font-bold gradient-text">TuCitaSegura</span>
       </a>
       <div class="hidden md:flex items-center gap-6">
-        <a href="/buscar.html" class="hover:text-blue-400">Buscar</a>
-        <a href="/cita.html" class="hover:text-blue-400">Mis Citas</a>
-        <div class="user-logged-in flex items-center gap-4">
-          <a href="/perfil.html" class="btn-primary px-6 py-2 rounded-full font-semibold">Mi Perfil</a>
-          <button id="logoutButton" class="glass px-6 py-2 rounded-full font-semibold hover:bg-white/20">Cerrar Sesión</button>
-        </div>
+        <a href="/buscar.html" class="hover:underline">Buscar</a>
+        <a href="/conversaciones.html" class="hover:underline">Conversaciones</a>
+        <a href="/admin/dashboard.html" class="hover:underline">Admin</a>
+        <a href="/index.html?openmodal=1" class="glass px-5 py-2 rounded-full font-semibold">Iniciar Sesión</a>
+        <a href="/index.html?openmodal=1" class="btn-primary px-5 py-2 rounded-full font-semibold">Únete Gratis</a>
       </div>
+      <div class="md:hidden"></div>
     </nav>
   </header>
 

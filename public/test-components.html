@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Componentes - TuCitaSegura</title>
+  
+  <!-- App Check Manager -->
+  <script src="js/app-check-manager.js"></script>
+  <!-- Mobile Menu Component -->
+  <script src="js/mobile-menu.js"></script>
+  <!-- Skeleton Loader -->
+  <script src="js/skeleton-loader.js"></script>
+  
+  <style>
+    body { 
+      background: #0f172a; 
+      color: #e2e8f0; 
+      font-family: Inter, sans-serif; 
+      padding: 20px; 
+    }
+    .test-section { 
+      background: rgba(30, 41, 59, 0.8); 
+      border: 1px solid rgba(255,255,255,0.1); 
+      border-radius: 12px; 
+      padding: 20px; 
+      margin: 20px 0; 
+    }
+    button { 
+      background: linear-gradient(135deg, #0ea5e9, #06b6d4); 
+      color: white; 
+      border: none; 
+      padding: 10px 20px; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      margin: 5px; 
+    }
+    .log { 
+      background: #1e293b; 
+      padding: 10px; 
+      border-radius: 8px; 
+      margin: 10px 0; 
+      font-family: monospace; 
+      font-size: 12px; 
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Test de Componentes TuCitaSegura</h1>
+  
+  <div class="test-section">
+    <h2>📱 Mobile Menu Test</h2>
+    <button onclick="testMobileMenu()">Probar Mobile Menu</button>
+    <button onclick="testMobileMenuUser()">Probar con datos de usuario</button>
+    <div id="mobileMenuLog" class="log"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>🔍 App Check Test</h2>
+    <button onclick="testAppCheck()">Probar App Check</button>
+    <button onclick="testAppCheckStatus()">Ver estado</button>
+    <div id="appCheckLog" class="log"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>💀 Skeleton Loader Test</h2>
+    <button onclick="testSkeletonLoader()">Mostrar Skeletons</button>
+    <button onclick="hideSkeletonLoader()">Ocultar Skeletons</button>
+    <div id="skeletonLog" class="log"></div>
+    <div id="skeletonContainer"></div>
+  </div>
+
+  <script>
+    // Logging functions
+    function log(section, message) {
+      const logEl = document.getElementById(section + 'Log');
+      logEl.innerHTML += '<div>> ' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // Test Mobile Menu
+    function testMobileMenu() {
+      try {
+        if (typeof MobileMenu === 'undefined') {
+          log('mobileMenu', '❌ MobileMenu no está definido');
+          return;
+        }
+        
+        const mobileMenu = new MobileMenu();
+        log('mobileMenu', '✅ MobileMenu instanciado');
+        
+        mobileMenu.initialize().then(() => {
+          log('mobileMenu', '✅ MobileMenu inicializado');
+          
+          // Simulate menu button click
+          const menuBtn = document.getElementById('mobileMenuBtn');
+          if (menuBtn) {
+            menuBtn.click();
+            log('mobileMenu', '✅ Menú abierto');
+            
+            setTimeout(() => {
+              menuBtn.click();
+              log('mobileMenu', '✅ Menú cerrado');
+            }, 2000);
+          }
+        }).catch(error => {
+          log('mobileMenu', '❌ Error: ' + error.message);
+        });
+        
+      } catch (error) {
+        log('mobileMenu', '❌ Error: ' + error.message);
+      }
+    }
+
+    // Test Mobile Menu with user data
+    function testMobileMenuUser() {
+      try {
+        if (typeof MobileMenu === 'undefined') {
+          log('mobileMenu', '❌ MobileMenu no está definido');
+          return;
+        }
+        
+        const mobileMenu = new MobileMenu();
+        
+        // Simulate user data
+        const mockUser = {
+          email: 'usuario@test.com',
+          alias: 'TestUser',
+          reputation: 85,
+          matchesCount: 12,
+          isVerified: true
+        };
+        
+        mobileMenu.updateUserData(mockUser);
+        log('mobileMenu', '✅ Datos de usuario actualizados');
+        
+        // Show menu with user data
+        const menuBtn = document.getElementById('mobileMenuBtn');
+        if (menuBtn) {
+          menuBtn.click();
+          log('mobileMenu', '✅ Menú con datos de usuario mostrado');
+          
+          setTimeout(() => {
+            menuBtn.click();
+            log('mobileMenu', '✅ Menú cerrado');
+          }, 3000);
+        }
+        
+      } catch (error) {
+        log('mobileMenu', '❌ Error: ' + error.message);
+      }
+    }
+
+    // Test App Check
+    function testAppCheck() {
+      try {
+        if (typeof AppCheckManager === 'undefined') {
+          log('appCheck', '❌ AppCheckManager no está definido');
+          return;
+        }
+        
+        const appCheckManager = new AppCheckManager();
+        log('appCheck', '✅ AppCheckManager instanciado');
+        
+        appCheckManager.initialize().then(() => {
+          log('appCheck', '✅ App Check inicializado');
+        }).catch(error => {
+          log('appCheck', '❌ Error: ' + error.message);
+        });
+        
+      } catch (error) {
+        log('appCheck', '❌ Error: ' + error.message);
+      }
+    }
+
+    // Test App Check status
+    function testAppCheckStatus() {
+      try {
+        if (typeof AppCheckManager === 'undefined') {
+          log('appCheck', '❌ AppCheckManager no está definido');
+          return;
+        }
+        
+        const appCheckManager = new AppCheckManager();
+        const status = appCheckManager.getStatus();
+        log('appCheck', '📊 Estado: ' + JSON.stringify(status, null, 2));
+        
+      } catch (error) {
+        log('appCheck', '❌ Error: ' + error.message);
+      }
+    }
+
+    // Test Skeleton Loader
+    function testSkeletonLoader() {
+      try {
+        if (typeof SkeletonLoader === 'undefined') {
+          log('skeleton', '❌ SkeletonLoader no está definido');
+          return;
+        }
+        
+        const skeletonLoader = new SkeletonLoader();
+        const container = document.getElementById('skeletonContainer');
+        
+        // Test profile cards skeletons
+        skeletonLoader.show(container, 'profile-cards', 4);
+        log('skeleton', '✅ Skeletons de tarjetas mostrados');
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+          skeletonLoader.hide(container);
+          log('skeleton', '✅ Skeletons ocultados');
+        }, 3000);
+        
+      } catch (error) {
+        log('skeleton', '❌ Error: ' + error.message);
+      }
+    }
+
+    // Hide skeleton loader
+    function hideSkeletonLoader() {
+      try {
+        if (typeof SkeletonLoader === 'undefined') {
+          log('skeleton', '❌ SkeletonLoader no está definido');
+          return;
+        }
+        
+        const skeletonLoader = new SkeletonLoader();
+        const container = document.getElementById('skeletonContainer');
+        skeletonLoader.hide(container);
+        log('skeleton', '✅ Skeletons ocultados manualmente');
+        
+      } catch (error) {
+        log('skeleton', '❌ Error: ' + error.message);
+      }
+    }
+
+    // Initial test
+    window.addEventListener('load', () => {
+      log('mobileMenu', '🚀 Test page loaded');
+      log('appCheck', '🚀 Test page loaded');
+      log('skeleton', '🚀 Test page loaded');
+      
+      // Check if components are available
+      setTimeout(() => {
+        log('mobileMenu', typeof MobileMenu !== 'undefined' ? '✅ MobileMenu disponible' : '❌ MobileMenu no disponible');
+        log('appCheck', typeof AppCheckManager !== 'undefined' ? '✅ AppCheckManager disponible' : '❌ AppCheckManager no disponible');
+        log('skeleton', typeof SkeletonLoader !== 'undefined' ? '✅ SkeletonLoader disponible' : '❌ SkeletonLoader no disponible');
+      }, 1000);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Generar Debug Token App Check</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; max-width: 800px; }
+    .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+    input[type=text] { width: 100%; padding: 8px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    button { padding: 8px 12px; border: 1px solid #999; border-radius: 6px; background: #fff; cursor: pointer; }
+    button:hover { background: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h1>Generar y establecer Debug Token de App Check</h1>
+  <div class="card">
+    <div class="row"><strong>Token generado:</strong></div>
+    <div class="row"><input id="token" type="text" readonly /></div>
+    <div class="row">
+      <button id="btnGenerate">Generar nuevo token</button>
+      <button id="btnCopy">Copiar</button>
+      <button id="btnSet">Establecer y recargar</button>
+    </div>
+    <p>
+      Añade este token en Firebase Console → App Check → Debug Tokens para tu app web.
+      Luego recarga tus páginas con <code>?debugtoken=EL_TOKEN</code>.
+    </p>
+  </div>
+
+  <script>
+    function uuidv4() {
+      // Generador simple de UUID v4
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+        const r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8);
+        return v.toString(16);
+      });
+    }
+
+    const $token = document.getElementById('token');
+    const $btnGen = document.getElementById('btnGenerate');
+    const $btnCopy = document.getElementById('btnCopy');
+    const $btnSet = document.getElementById('btnSet');
+
+    function setToken(t) {
+      $token.value = t;
+      try { localStorage.setItem('firebaseAppCheckDebugToken', t); } catch {}
+    }
+
+    // Inicial: usa lo guardado si existe
+    setToken(localStorage.getItem('firebaseAppCheckDebugToken') || uuidv4());
+
+    $btnGen.addEventListener('click', () => setToken(uuidv4()));
+    $btnCopy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText($token.value); alert('Copiado'); } catch { alert('No se pudo copiar'); }
+    });
+    $btnSet.addEventListener('click', () => {
+      // Establece el token para App Check y recarga para que tome efecto
+      try { self.FIREBASE_APPCHECK_DEBUG_TOKEN = $token.value; } catch {}
+      location.reload();
+    });
+  </script>
+</body>
+</html>
+

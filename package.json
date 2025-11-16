@@ -3,16 +3,20 @@
   "type": "module",
   "private": true,
   "engines": {
-    "node": "18"
+    "node": "22.x"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "http-proxy-middleware": "^3.0.5",
+    "firebase-admin": "^12.6.0"
   },
   "scripts": {
     "start": "node server.js",
+    "dev": "node server.js",
     "build-css": "tailwindcss -i ./src/input.css -o ./public/styles.css --minify",
-    "watch-css": "tailwindcss -i ./src/input.css -o ./public/styles.css --watch"
+    "watch-css": "tailwindcss -i ./src/input.css -o ./public/styles.css --watch",
+    "update:users": "node scripts/update-existing-users.js"
   },
   "devDependencies": {
     "@ljharb/tsconfig": "^0.3.2",

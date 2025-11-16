@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Desactivar reCAPTCHA en desarrollo para evitar errores -->
+  <meta name="recaptcha:disable" content="true" />
+  
+  <title>Test App Check - TuCitaSegura</title>
+  
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .test-result { 
+      padding: 1rem; 
+      margin: 1rem 0; 
+      border-radius: 0.5rem; 
+      font-family: monospace;
+    }
+    .success { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; }
+    .error { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; }
+    .info { background: rgba(14, 165, 233, 0.2); border: 1px solid #0ea5e9; }
+  </style>
+</head>
+<body class="min-h-screen text-white font-inter">
+  <div class="max-w-4xl mx-auto p-8">
+    <h1 class="text-3xl font-bold mb-6 gradient-text">Test Firebase App Check</h1>
+    
+    <div class="glass rounded-xl p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">Estado de App Check</h2>
+      <div id="appCheckStatus" class="test-result info">
+        Verificando estado de App Check...
+      </div>
+    </div>
+    
+    <div class="glass rounded-xl p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">Logs de Consola</h2>
+      <div id="consoleLogs" class="test-result info">
+        Esperando logs...
+      </div>
+    </div>
+    
+    <div class="glass rounded-xl p-6">
+      <h2 class="text-xl font-semibold mb-4">Controles</h2>
+      <button id="testTokenBtn" class="btn-primary mr-4">Probar Token</button>
+      <button id="clearLogsBtn" class="btn-secondary">Limpiar Logs</button>
+      <button id="forceErrorBtn" class="btn-secondary">Forzar Error (Test)</button>
+    </div>
+  </div>
+
+  <!-- Firebase Config -->
+  <script type="module">
+    import { auth, db } from "/js/firebase-config-enterprise.js";
+    
+    // Capturar logs de App Check
+    const originalConsole = { ...console };
+    const logs = [];
+    
+    ['debug', 'log', 'warn', 'error'].forEach(method => {
+      console[method] = function(...args) {
+        originalConsole[method](...args);
+        logs.push({ method, args: args.map(arg => String(arg)), timestamp: new Date().toLocaleTimeString() });
+        updateLogsDisplay();
+      };
+    });
+    
+    function updateLogsDisplay() {
+      const logsDiv = document.getElementById('consoleLogs');
+      if (logs.length === 0) {
+        logsDiv.innerHTML = 'Sin logs recientes';
+        return;
+      }
+      
+      const recentLogs = logs.slice(-10).reverse();
+      logsDiv.innerHTML = recentLogs.map(log => 
+        `<div class="mb-2 text-sm">
+          <span class="text-gray-400">[${log.timestamp}]</span> 
+          <span class="font-mono ${log.method === 'error' ? 'text-red-400' : log.method === 'warn' ? 'text-yellow-400' : 'text-green-400'}">
+            ${log.method.toUpperCase()}: ${log.args.join(' ')}
+          </span>
+        </div>`
+      ).join('');
+    }
+    
+    // Verificar estado de App Check
+    async function checkAppCheckStatus() {
+      const statusDiv = document.getElementById('appCheckStatus');
+      
+      try {
+        if (typeof globalThis.__appCheckReady === 'undefined') {
+          statusDiv.className = 'test-result error';
+          statusDiv.innerHTML = '❌ App Check no está inicializado';
+          return;
+        }
+        
+        const token = await globalThis.__appCheckReady;
+        
+        if (token) {
+          statusDiv.className = 'test-result success';
+          statusDiv.innerHTML = `
+            ✅ App Check funcionando correctamente<br>
+            🔑 Token: ${token.substring(0, 20)}...<br>
+            📍 Entorno: ${location.hostname === 'localhost' ? 'Desarrollo' : 'Producción'}
+          `;
+        } else {
+          statusDiv.className = 'test-result error';
+          statusDiv.innerHTML = '⚠️ App Check inicializado pero sin token válido';
+        }
+      } catch (error) {
+        statusDiv.className = 'test-result error';
+        statusDiv.innerHTML = `❌ Error en App Check: ${error.message}`;
+        console.error('App Check Error:', error);
+      }
+    }
+    
+    // Controles
+    document.getElementById('testTokenBtn').addEventListener('click', async () => {
+      console.log('🧪 Probando token de App Check...');
+      try {
+        if (globalThis._appCheckInstance) {
+          const tokenResult = await globalThis._appCheckInstance.getToken();
+          console.log('✅ Token obtenido:', tokenResult.token.substring(0, 20) + '...');
+        } else {
+          console.warn('⚠️ App Check instance no disponible');
+        }
+      } catch (error) {
+        console.error('❌ Error obteniendo token:', error);
+      }
+    });
+    
+    document.getElementById('clearLogsBtn').addEventListener('click', () => {
+      logs.length = 0;
+      updateLogsDisplay();
+      console.log('🗑️ Logs limpiados');
+    });
+    
+    document.getElementById('forceErrorBtn').addEventListener('click', () => {
+      console.error('🧪 Error de prueba forzado');
+      console.error('Este es un error de prueba para verificar el sistema de logs');
+    });
+    
+    // Verificar estado inicial
+    setTimeout(() => {
+      console.log('🔍 Iniciando verificación de App Check...');
+      checkAppCheckStatus();
+    }, 1000);
+    
+    // Verificar periódicamente
+    setInterval(checkAppCheckStatus, 10000);
+    
+    // Exponer función para debugging
+    globalThis.testAppCheck = checkAppCheckStatus;
+    
+    console.log('🚀 Página de test de App Check cargada');
+    console.log('💡 Usa testAppCheck() para verificar el estado manualmente');
+  </script>
+</body>
+</html>

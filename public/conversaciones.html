@@ -3,25 +3,40 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  
   <title>Conversaciones — TuCitaSegura</title>
+  
+  <!-- App Check Manager -->
+  <script src="js/app-check-manager.js"></script>
+  <!-- Mobile Menu Component -->
+  <script src="js/mobile-menu.js"></script>
+  <!-- Skeleton Loader -->
+  <script src="js/skeleton-loader.js"></script>
   <link rel="stylesheet" href="/styles.css" />
+  <!-- Enhanced Animations -->
+  <link rel="stylesheet" href="css/enhanced-animations.css" />
  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" crossorigin="anonymous" />
-  <style>
-    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0F172A 0%, #1e3a8a 35%, #0369a1 100%); }
-    .glass { background: rgba(255,255,255,0.1); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); }
-    .badge { font-size: 11px; padding: 2px 6px; border-radius: 999px; }
-  </style>
+  
 </head>
 <body class="min-h-screen text-white font-inter">
-  <header class="fixed w-full top-0 z-50 glass">
-    <nav class="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
+  <header class="fixed top-0 left-0 w-full glass backdrop-blur-xl z-50">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
       <div class="flex items-center gap-2">
-        <i class="fas fa-comments text-blue-300 text-2xl"></i>
-        <span class="text-xl font-bold">Conversaciones</span>
+        <i class="fas fa-heart-circle-check text-blue-400 text-2xl"></i>
+        <span class="text-xl font-bold gradient-text">TuCitaSegura</span>
       </div>
-      <div class="flex items-center gap-4">
-        <span id="userEmail" class="text-blue-100 text-sm"></span>
-        <a href="/" class="glass px-3 py-2 rounded">Inicio</a>
+      <div class="hidden md:flex items-center gap-6">
+        <a href="/conversaciones.html" class="hover:underline">Conversaciones</a>
+        <a href="/perfil.html" class="hover:underline">Perfil</a>
+        <a href="/admin/dashboard.html" class="hover:underline">Admin</a>
+        <a href="/index.html?openmodal=1" class="glass px-5 py-2 rounded-full font-semibold">Iniciar Sesión</a>
+        <a href="/index.html?openmodal=1" class="btn-primary px-5 py-2 rounded-full font-semibold">Únete Gratis</a>
+      </div>
+      <!-- Mobile menu button -->
+      <div class="md:hidden">
+        <button id="mobileMenuBtn" class="text-white hover:text-blue-400 transition-colors" aria-label="Abrir menú">
+          <i class="fas fa-bars text-xl"></i>
+        </button>
       </div>
     </nav>
   </header>
@@ -100,6 +115,10 @@
     onAuthStateChanged(auth, async (user) => {
       if (!user) { location.href = '/'; return; }
       userEmailEl.textContent = user.email || '';
+      
+      // Show skeleton loading for conversations
+      skeletonLoader.show('conversationsList', 'conversations', 5);
+      
       listEl.innerHTML = '';
       emptyEl.classList.add('hidden');
       try {
@@ -144,6 +163,9 @@
           items.push(itemTemplate(conv.id, me, otherUser));
         }
         listEl.innerHTML = items.join('');
+        
+        // Hide skeleton loading
+        skeletonLoader.hide('conversationsList');
 
         // Deshabilitar acciones de chat si la membresía está inactiva y la política lo requiere
         if (requiresMembership && !hasMembership) {
@@ -192,10 +214,59 @@
         }
       } catch (e) {
         console.error('Error cargando conversaciones', e);
+        skeletonLoader.hide('conversationsList');
         showToast('No se pudieron cargar las conversaciones', 'error');
       }
     });
   </script>
-  <script type="module" src="/js/guards.js"></script>
+  <script src="/js/guards.js"></script>
+  
+  <script>
+    // Initialize components when ready
+    async function initializeConversacionesComponents() {
+      try {
+        // Wait for Firebase to be ready
+        await waitForFirebase();
+        
+        // Check if Firebase is available
+        if (typeof firebase === 'undefined') {
+          console.error('❌ Firebase no está disponible');
+          return;
+        }
+        
+        // Get Firebase app
+        const firebaseApp = firebase.app();
+        
+        // Initialize App Check Manager
+        const appCheckManager = new AppCheckManager(firebaseApp, {
+          siteKey: "6LfdTvQrAAAAACkGjvbbFIkqHMsTHwRYYZS_CGq2",
+          autoRefresh: true,
+          debugMode: true
+        });
+        
+        // Initialize Mobile Menu
+        const mobileMenu = new MobileMenu();
+        
+        // Initialize Skeleton Loader
+        const skeletonLoader = new SkeletonLoader();
+        skeletonLoader.initialize();
+        
+        // Initialize App Check with smart fallback
+        await appCheckManager.init();
+        
+        console.log('✅ Conversaciones: App Check Manager, Mobile Menu y Skeleton Loader inicializados');
+        
+      } catch (error) {
+        console.error('Error inicializando componentes:', error);
+      }
+    }
+    
+    // Start initialization when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeConversacionesComponents);
+    } else {
+      initializeConversacionesComponents();
+    }
+  </script>
 </body>
 </html>

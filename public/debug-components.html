@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Componentes - TuCitaSegura</title>
+  
+  <style>
+    body { 
+      background: #0f172a; 
+      color: #e2e8f0; 
+      font-family: Inter, sans-serif; 
+      padding: 20px; 
+    }
+    .debug-section { 
+      background: rgba(30, 41, 59, 0.8); 
+      border: 1px solid rgba(255,255,255,0.1); 
+      border-radius: 12px; 
+      padding: 20px; 
+      margin: 20px 0; 
+    }
+    .status { 
+      padding: 10px; 
+      border-radius: 6px; 
+      margin: 10px 0; 
+    }
+    .success { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    .warning { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <h1>🔍 Debug de Componentes TuCitaSegura</h1>
+  
+  <div class="debug-section">
+    <h2>Estado de Scripts</h2>
+    <div id="scriptStatus"></div>
+  </div>
+  
+  <div class="debug-section">
+    <h2>Componentes Disponibles</h2>
+    <div id="componentStatus"></div>
+  </div>
+  
+  <div class="debug-section">
+    <h2>Errores de Carga</h2>
+    <div id="errorLog"></div>
+  </div>
+
+  <!-- Load scripts with error handling -->
+  <script src="js/app-check-manager.js" onload="scriptLoaded('app-check-manager')" onerror="scriptError('app-check-manager')"></script>
+  <script src="js/mobile-menu.js" onload="scriptLoaded('mobile-menu')" onerror="scriptError('mobile-menu')"></script>
+  <script src="js/skeleton-loader.js" onload="scriptLoaded('skeleton-loader')" onerror="scriptError('skeleton-loader')"></script>
+
+  <script>
+    const scriptStatus = {};
+    
+    function scriptLoaded(name) {
+      scriptStatus[name] = 'loaded';
+      updateScriptStatus();
+      checkComponents();
+    }
+    
+    function scriptError(name) {
+      scriptStatus[name] = 'error';
+      logError(`Error al cargar ${name}.js`);
+      updateScriptStatus();
+    }
+    
+    function updateScriptStatus() {
+      const statusEl = document.getElementById('scriptStatus');
+      statusEl.innerHTML = '';
+      
+      Object.entries(scriptStatus).forEach(([name, status]) => {
+        const div = document.createElement('div');
+        div.className = `status ${status === 'loaded' ? 'success' : 'error'}`;
+        div.textContent = `${name}: ${status}`;
+        statusEl.appendChild(div);
+      });
+    }
+    
+    function checkComponents() {
+      const componentStatus = document.getElementById('componentStatus');
+      componentStatus.innerHTML = '';
+      
+      // Check AppCheckManager
+      const appCheckStatus = typeof AppCheckManager !== 'undefined';
+      const div1 = document.createElement('div');
+      div1.className = `status ${appCheckStatus ? 'success' : 'error'}`;
+      div1.textContent = `AppCheckManager: ${appCheckStatus ? 'Disponible' : 'No disponible'}`;
+      componentStatus.appendChild(div1);
+      
+      // Check MobileMenu
+      const mobileMenuStatus = typeof MobileMenu !== 'undefined';
+      const div2 = document.createElement('div');
+      div2.className = `status ${mobileMenuStatus ? 'success' : 'error'}`;
+      div2.textContent = `MobileMenu: ${mobileMenuStatus ? 'Disponible' : 'No disponible'}`;
+      componentStatus.appendChild(div2);
+      
+      // Check SkeletonLoader
+      const skeletonStatus = typeof SkeletonLoader !== 'undefined';
+      const div3 = document.createElement('div');
+      div3.className = `status ${skeletonStatus ? 'success' : 'error'}`;
+      div3.textContent = `SkeletonLoader: ${skeletonStatus ? 'Disponible' : 'No disponible'}`;
+      componentStatus.appendChild(div3);
+      
+      // Test instantiation if available
+      if (appCheckStatus) {
+        try {
+          const testInstance = new AppCheckManager();
+          const div4 = document.createElement('div');
+          div4.className = 'status success';
+          div4.textContent = 'AppCheckManager: Instanciación exitosa';
+          componentStatus.appendChild(div4);
+        } catch (error) {
+          const div4 = document.createElement('div');
+          div4.className = 'status error';
+          div4.textContent = `AppCheckManager: Error en instanciación - ${error.message}`;
+          componentStatus.appendChild(div4);
+        }
+      }
+      
+      if (mobileMenuStatus) {
+        try {
+          const testInstance = new MobileMenu();
+          const div5 = document.createElement('div');
+          div5.className = 'status success';
+          div5.textContent = 'MobileMenu: Instanciación exitosa';
+          componentStatus.appendChild(div5);
+        } catch (error) {
+          const div5 = document.createElement('div');
+          div5.className = 'status error';
+          div5.textContent = `MobileMenu: Error en instanciación - ${error.message}`;
+          componentStatus.appendChild(div5);
+        }
+      }
+      
+      if (skeletonStatus) {
+        try {
+          const testInstance = new SkeletonLoader();
+          const div6 = document.createElement('div');
+          div6.className = 'status success';
+          div6.textContent = 'SkeletonLoader: Instanciación exitosa';
+          componentStatus.appendChild(div6);
+        } catch (error) {
+          const div6 = document.createElement('div');
+          div6.className = 'status error';
+          div6.textContent = `SkeletonLoader: Error en instanciación - ${error.message}`;
+          componentStatus.appendChild(div6);
+        }
+      }
+    }
+    
+    function logError(message) {
+      const errorLog = document.getElementById('errorLog');
+      const div = document.createElement('div');
+      div.className = 'status error';
+      div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      errorLog.appendChild(div);
+    }
+    
+    // Initial check after a delay
+    setTimeout(() => {
+      checkComponents();
+    }, 1000);
+    
+    // Periodic checks
+    setInterval(checkComponents, 5000);
+  </script>
+</body>
+</html>

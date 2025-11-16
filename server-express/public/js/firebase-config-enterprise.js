@@ -33,6 +33,7 @@ try {
     // eslint-disable-next-line no-undef
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
     console.debug('ℹ️ App Check en modo debug (preview/desarrollo)');
+    try { globalThis.__appCheckReady = Promise.resolve('debug'); } catch {}
   }
   if (siteKey && typeof initializeAppCheck === 'function' && isProdHost) {
     initializeAppCheck(app, {
