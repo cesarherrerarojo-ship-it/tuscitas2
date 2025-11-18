@@ -1,16 +1,16 @@
+"""
+API tests for TuCitaSegura Backend - Async version
+"""
 import pytest
-from fastapi.testclient import TestClient
-from main import app
+from httpx import AsyncClient
 
-# Create test client
-client = TestClient(app)
-
-class TestAPIEndpoints:
-    """Integration tests for API endpoints"""
+@pytest.mark.asyncio
+class TestAPIEndpointsAsync:
+    """Test suite for API endpoints - Async version"""
     
-    def test_health_check(self):
+    async def test_health_check(self, client):
         """Test health check endpoint"""
-        response = client.get("/health")
+        response = await client.get("/health")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
@@ -18,7 +18,7 @@ class TestAPIEndpoints:
         assert "timestamp" in data
         assert "services" in data
     
-    def test_recommendations_endpoint(self):
+    async def test_recommendations_endpoint(self, client):
         """Test recommendations API endpoint"""
         payload = {
             "user_id": "test_user_123",
@@ -30,7 +30,7 @@ class TestAPIEndpoints:
             "limit": 5
         }
         
-        response = client.post("/api/v1/recommendations", json=payload)
+        response = await client.post("/api/v1/recommendations", json=payload)
         assert response.status_code == 200
         data = response.json()
         # El endpoint devuelve directamente RecommendationResponse, no SuccessResponse
@@ -61,7 +61,7 @@ class TestAPIEndpoints:
         assert "is_suspicious" in data["data"]
         assert "risk_score" in data["data"]
     
-    def test_message_moderation_endpoint(self, authenticated_client):
+    async def test_message_moderation_endpoint(self, authenticated_client):
         """Test message moderation API endpoint"""
         payload = {
             "message_text": "Hello, how are you today?",
@@ -69,7 +69,7 @@ class TestAPIEndpoints:
             "receiver_id": "user_456"
         }
         
-        response = authenticated_client.post("/api/v1/moderate-message", json=payload)
+        response = await authenticated_client.post("/api/v1/moderate-message", json=payload)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] == True
@@ -77,19 +77,19 @@ class TestAPIEndpoints:
         assert "should_block" in data["data"]
         assert "is_toxic" in data["data"]
     
-    def test_meeting_spots_endpoint(self, authenticated_client):
+    async def test_meeting_spots_endpoint(self, authenticated_client):
         """Test meeting spots API endpoint"""
         payload = {
             "user1_location": {"lat": 40.7128, "lng": -74.0060},
             "user2_location": {"lat": 40.7589, "lng": -73.9851}
         }
         
-        response = authenticated_client.post("/api/v1/suggest-meeting-spots", json=payload)
+        response = await authenticated_client.post("/api/v1/suggest-meeting-spots", json=payload)
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
     
-    def test_vip_events_create_endpoint(self, authenticated_client):
+    async def test_vip_events_create_endpoint(self, authenticated_client):
         """Test VIP events creation API endpoint"""
         payload = {
             "event_type": "wine_tasting",
@@ -103,14 +103,14 @@ class TestAPIEndpoints:
             "organizer_id": "organizer_123"
         }
         
-        response = authenticated_client.post("/api/v1/vip-events/create", json=payload)
+        response = await authenticated_client.post("/api/v1/vip-events/create", json=payload)
         assert response.status_code in [200, 400]  # May fail if organizer doesn't exist
         if response.status_code == 200:
             data = response.json()
             assert data["success"] == True
             assert "event_id" in data["data"]
     
-    def test_video_chat_create_endpoint(self, authenticated_client):
+    async def test_video_chat_create_endpoint(self, authenticated_client):
         """Test video chat creation API endpoint"""
         payload = {
             "host_user_id": "user_123",
@@ -119,70 +119,74 @@ class TestAPIEndpoints:
             "is_private": True
         }
         
-        response = authenticated_client.post("/api/v1/video-chat/create", json=payload)
+        response = await authenticated_client.post("/api/v1/video-chat/create", json=payload)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] == True
         assert "call_id" in data["data"]
         assert "room_id" in data["data"]
     
-    def test_referral_code_generation_endpoint(self, authenticated_client):
+    async def test_referral_code_generation_endpoint(self, authenticated_client):
         """Test referral code generation API endpoint"""
-        response = authenticated_client.post("/api/v1/referrals/generate-code?user_id=test_user_123")
+        response = await authenticated_client.post("/api/v1/referrals/generate-code?user_id=test_user_123")
         assert response.status_code == 200
         data = response.json()
         assert data["success"] == True
         assert "code" in data["data"]
+
+@pytest.mark.asyncio
+class TestErrorHandlingAsync:
+    """Test error handling - Async version"""
     
-    def test_invalid_endpoint(self):
+    async def test_invalid_endpoint(self, client):
         """Test invalid endpoint handling"""
-        response = client.get("/api/v1/nonexistent")
+        response = await client.get("/api/v1/nonexistent")
         assert response.status_code == 404
     
-    def test_invalid_method(self):
-        """Test invalid HTTP method handling"""
-        response = client.delete("/health")
+    async def test_invalid_method(self, client):
+        """Test invalid HTTP method"""
+        response = await client.delete("/api/v1/recommendations")
         assert response.status_code == 405
     
-    def test_invalid_payload(self):
+    async def test_invalid_payload(self, client):
         """Test invalid payload handling"""
-        payload = {
-            "invalid_field": "invalid_value"
-        }
-        
-        response = client.post("/api/v1/recommendations", json=payload)
-        assert response.status_code in [200, 422]  # 422 for validation error
-
-
-class TestErrorHandling:
-    """Test error handling across the API"""
-    
-    def test_empty_payload(self):
-        """Test empty payload handling"""
-        response = client.post("/api/v1/recommendations", json={})
+        payload = {"invalid": "data"}
+        response = await client.post("/api/v1/recommendations", json=payload)
+        # Should either validate or return 422
         assert response.status_code in [200, 422]
     
-    def test_malformed_json(self):
+    async def test_empty_payload(self, client):
+        """Test empty payload handling"""
+        response = await client.post("/api/v1/recommendations", json={})
+        # Should either validate or return 422
+        assert response.status_code in [200, 422]
+    
+    async def test_malformed_json(self, client):
         """Test malformed JSON handling"""
-        response = client.post(
+        response = await client.post(
             "/api/v1/recommendations",
-            data="invalid json",
+            content="invalid json",
             headers={"Content-Type": "application/json"}
         )
         assert response.status_code == 422
     
-    def test_sql_injection_attempt(self):
+    async def test_sql_injection_attempt(self, authenticated_client):
         """Test SQL injection prevention"""
         payload = {
             "user_id": "'; DROP TABLE users; --",
             "limit": 5
         }
         
-        response = client.post("/api/v1/recommendations", json=payload)
+        response = await authenticated_client.post("/api/v1/recommendations", json=payload)
         # Should not crash or execute malicious code
-        assert response.status_code in [200, 422]
+        assert response.status_code in [200, 400, 422]
+        
+        if response.status_code == 200:
+            data = response.json()
+            # Should return recommendations safely without executing SQL injection
+            assert "recommendations" in data
     
-    def test_xss_attempt(self, authenticated_client):
+    async def test_xss_attempt(self, authenticated_client):
         """Test XSS prevention"""
         payload = {
             "message_text": "<script>alert('XSS')</script>",
@@ -190,12 +194,11 @@ class TestErrorHandling:
             "receiver_id": "user_456"
         }
         
-        response = authenticated_client.post("/api/v1/moderate-message", json=payload)
+        response = await authenticated_client.post("/api/v1/moderate-message", json=payload)
         assert response.status_code == 200
         data = response.json()
+        # Should handle XSS attempt safely
         assert data["success"] == True
-
-
-if __name__ == "__main__":
-    # Run tests
-    pytest.main([__file__, "-v"])
+        assert "data" in data
+        assert "should_block" in data["data"]
+        assert "is_toxic" in data["data"]

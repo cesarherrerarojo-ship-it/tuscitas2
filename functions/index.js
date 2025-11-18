@@ -1511,6 +1511,216 @@ exports.deleteInsuranceVault = functions.https.onCall(async (data, context) => {
 });
 
 // ============================================================================
+// STRIPE SUBSCRIPTION CALLABLES
+// ============================================================================
+
+/**
+ * Crear suscripción Stripe para un usuario
+ * Se usa desde el frontend para iniciar el flujo de suscripción
+ */
+exports.createStripeSubscription = functions.https.onCall(async (data, context) => {
+  // Verificar autenticación
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const userId = context.auth.uid;
+  const { priceId, paymentMethodId } = data;
+
+  if (!priceId) {
+    throw new functions.https.HttpsError('invalid-argument', 'priceId is required');
+  }
+
+  try {
+    console.log(`[createStripeSubscription] Creating subscription for user ${userId} with price ${priceId}`);
+
+    // Obtener o crear customer de Stripe
+    const db = admin.firestore();
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+
+    let customerId = userData?.stripeCustomerId;
+
+    if (!customerId) {
+      // Crear nuevo customer
+      const customer = await stripe.customers.create({
+        email: userData?.email || context.auth.token.email,
+        metadata: {
+          userId: userId,
+          firebaseUID: userId
+        }
+      });
+      customerId = customer.id;
+
+      // Guardar customer ID en Firestore
+      await db.collection('users').doc(userId).update({
+        stripeCustomerId: customerId,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    // Si se proporcionó un método de pago, adjuntarlo al customer
+    if (paymentMethodId) {
+      await stripe.paymentMethods.attach(paymentMethodId, {
+        customer: customerId,
+      });
+
+      // Establecer como método de pago predeterminado
+      await stripe.customers.update(customerId, {
+        invoice_settings: {
+          default_payment_method: paymentMethodId,
+        },
+      });
+    }
+
+    // Crear la suscripción
+    const subscription = await stripe.subscriptions.create({
+      customer: customerId,
+      items: [{ price: priceId }],
+      metadata: {
+        userId: userId,
+        firebaseUID: userId
+      },
+      expand: ['latest_invoice.payment_intent'],
+    });
+
+    console.log(`[createStripeSubscription] Subscription created: ${subscription.id}`);
+
+    return {
+      success: true,
+      subscriptionId: subscription.id,
+      clientSecret: subscription.latest_invoice?.payment_intent?.client_secret,
+      status: subscription.status
+    };
+
+  } catch (error) {
+    console.error('[createStripeSubscription] Error:', error);
+    
+    if (error.type === 'StripeCardError') {
+      throw new functions.https.HttpsError('failed-precondition', error.message);
+    } else if (error.type === 'StripeInvalidRequestError') {
+      throw new functions.https.HttpsError('invalid-argument', error.message);
+    }
+    
+    throw new functions.https.HttpsError('internal', 'Failed to create subscription');
+  }
+});
+
+/**
+ * Actualizar método de pago de una suscripción Stripe
+ */
+exports.updateStripePaymentMethod = functions.https.onCall(async (data, context) => {
+  // Verificar autenticación
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const userId = context.auth.uid;
+  const { paymentMethodId } = data;
+
+  if (!paymentMethodId) {
+    throw new functions.https.HttpsError('invalid-argument', 'paymentMethodId is required');
+  }
+
+  try {
+    console.log(`[updateStripePaymentMethod] Updating payment method for user ${userId}`);
+
+    const db = admin.firestore();
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+
+    if (!userData?.stripeCustomerId) {
+      throw new functions.https.HttpsError('failed-precondition', 'No Stripe customer found for user');
+    }
+
+    const customerId = userData.stripeCustomerId;
+
+    // Adjuntar el nuevo método de pago al customer
+    await stripe.paymentMethods.attach(paymentMethodId, {
+      customer: customerId,
+    });
+
+    // Actualizar el método de pago predeterminado
+    await stripe.customers.update(customerId, {
+      invoice_settings: {
+        default_payment_method: paymentMethodId,
+      },
+    });
+
+    // Si el usuario tiene una suscripción activa, actualizarla también
+    if (userData.subscriptionId) {
+      await stripe.subscriptions.update(userData.subscriptionId, {
+        default_payment_method: paymentMethodId,
+      });
+    }
+
+    console.log(`[updateStripePaymentMethod] Payment method updated for customer ${customerId}`);
+
+    return {
+      success: true,
+      message: 'Payment method updated successfully'
+    };
+
+  } catch (error) {
+    console.error('[updateStripePaymentMethod] Error:', error);
+    
+    if (error.type === 'StripeCardError') {
+      throw new functions.https.HttpsError('failed-precondition', error.message);
+    } else if (error.type === 'StripeInvalidRequestError') {
+      throw new functions.https.HttpsError('invalid-argument', error.message);
+    }
+    
+    throw new functions.https.HttpsError('internal', 'Failed to update payment method');
+  }
+});
+
+/**
+ * Cancelar suscripción Stripe de un usuario
+ */
+exports.cancelStripeSubscription = functions.https.onCall(async (data, context) => {
+  // Verificar autenticación
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const userId = context.auth.uid;
+
+  try {
+    console.log(`[cancelStripeSubscription] Canceling subscription for user ${userId}`);
+
+    const db = admin.firestore();
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+
+    if (!userData?.subscriptionId) {
+      throw new functions.https.HttpsError('failed-precondition', 'No active subscription found');
+    }
+
+    // Cancelar la suscripción al final del período actual
+    const subscription = await stripe.subscriptions.update(userData.subscriptionId, {
+      cancel_at_period_end: true,
+    });
+
+    console.log(`[cancelStripeSubscription] Subscription ${subscription.id} scheduled for cancellation`);
+
+    return {
+      success: true,
+      message: 'Subscription scheduled for cancellation at period end',
+      cancelAt: subscription.cancel_at
+    };
+
+  } catch (error) {
+    console.error('[cancelStripeSubscription] Error:', error);
+    
+    if (error.type === 'StripeInvalidRequestError') {
+      throw new functions.https.HttpsError('invalid-argument', error.message);
+    }
+    
+    throw new functions.https.HttpsError('internal', 'Failed to cancel subscription');
+  }
+});
+
+// ============================================================================
 // LIMPIEZA PROGRAMADA: borrar eventos antiguos en `webhook_events`
 // ============================================================================
 // El repositorio de idempotencia guarda `processedAt` como timestamp.

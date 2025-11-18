@@ -16,11 +16,9 @@ def test_schema_imports():
             
             # VIP Event schemas
             VIPEventCreateRequest, VIPEventSuggestionRequest, 
-            VIPEventBookingRequest, VIPEventConfirmation,
-            VIPEventListResponse, VIPEventDetailResponse,
-            VIPEventUpdateRequest, VIPEventTicketRequest,
+            VIPEventTicketRequest, VIPEventCreate,
             VIPEventResponse, VIPEventTicketResponse,
-            VIPEventStatistics, CuratedNetworkingEventRequest,
+            VIPEventStatistics,
             
             # Video Call schemas
             VideoCallCreateRequest, VideoCallInvitationRequest,
@@ -39,8 +37,7 @@ def test_schema_imports():
             MessageModerationRequest, MessageModerationResult,
             MeetingSpotRequest, MeetingSpot,
             LocationVerificationRequest, LocationVerificationResult,
-            NotificationRequest, NotificationSchedule,
-            VIPEventCreate, VIPEventApplication
+            NotificationRequest, NotificationSchedule
         )
         
         print("✅ All schemas imported successfully!")
@@ -53,20 +50,24 @@ def test_schema_imports():
             event_type="dinner",
             location_data={"city": "Madrid", "address": "Calle Mayor 1"},
             date_time="2024-02-01T20:00:00Z",
-            organizer_id="user123"
+            organizer_id="user123",
+            max_attendees=10,
+            price_per_person=50.0
         )
         print(f"✅ VIPEventCreateRequest instance created: {vip_request.event_type}")
         
-        video_request = VideoCallCreateRequest(user_id="user123", call_type="1v1")
-        print(f"✅ VideoCallCreateRequest instance created: {video_request.call_type}")
+        video_request = VideoCallCreateRequest(host_user_id="user123", display_name="Test User")
+        print(f"✅ VideoCallCreateRequest instance created: {video_request.host_user_id}")
         
         analytics_response = RevenueForecastResponse(
-            forecast=[{"date": "2024-01", "amount": 1000}],
-            algorithm="Prophet",
-            confidence_interval="95%",
-            total_projected_revenue=12000
+            forecast_period="2024-01-01 to 2024-12-31",
+            predicted_revenue=12000.0,
+            confidence_interval={"lower": 10000.0, "upper": 14000.0},
+            growth_rate=0.15,
+            key_factors=["seasonal_trends", "user_growth"],
+            monthly_breakdown=[{"month": "2024-01", "revenue": 1000.0}]
         )
-        print(f"✅ RevenueForecastResponse instance created: {analytics_response.algorithm}")
+        print(f"✅ RevenueForecastResponse instance created: {analytics_response.predicted_revenue}")
         
         return True
         

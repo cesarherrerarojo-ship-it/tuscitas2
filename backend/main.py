@@ -81,15 +81,215 @@ def verify_firebase_token(authorization: str = Header(None)) -> dict:
     """
     Verifica el ID token de Firebase desde el header Authorization.
     Requiere formato: Bearer <id_token>
+    En modo desarrollo, permite tokens de prueba.
     """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header missing or invalid")
     token = authorization.split(" ", 1)[1]
+    
+    # En modo desarrollo, permitir tokens de prueba
+    if settings.ENVIRONMENT == "development" and token == "test_token_123":
+        return {"uid": "test_user_123", "email": "test@example.com"}
+    
     try:
         decoded = firebase_auth.verify_id_token(token)
         return decoded
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired Firebase ID token")
+
+
+def require_verified_email(current_user: dict = Depends(verify_firebase_token)) -> dict:
+    """
+    Verifica que el usuario tenga el email verificado.
+    Rechaza el acceso si el email no está verificado.
+    """
+    # En modo desarrollo, permitir acceso con token de prueba
+    if settings.ENVIRONMENT == "development" and current_user.get("uid") == "test_user_123":
+        return current_user
+    
+    try:
+        # Obtener información completa del usuario de Firebase Auth
+        user_record = firebase_auth.get_user(current_user["uid"])
+        
+        if not user_record.email_verified:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Email no verificado. Por favor verifica tu email antes de continuar."
+            )
+        
+        return current_user
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        logger.error(f"Error verificando email del usuario: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al verificar el estado del email"
+        )
+
+
+def require_complete_profile(current_user: dict = Depends(verify_firebase_token)) -> dict:
+    """
+    Verifica que el usuario tenga el perfil completado.
+    Requiere: alias, fecha de nacimiento, género, ciudad, profesión, bio (mínimo 120 palabras), mínimo 3 fotos.
+    """
+    # En modo desarrollo, permitir acceso con token de prueba
+    if settings.ENVIRONMENT == "development" and current_user.get("uid") == "test_user_123":
+        return current_user
+    
+    try:
+        # Importar Firestore para verificar el perfil
+        from firebase_admin import firestore
+        db = firestore.client()
+        
+        # Obtener perfil del usuario
+        user_ref = db.collection('users').document(current_user["uid"])
+        user_doc = user_ref.get()
+        
+        if not user_doc.exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Perfil de usuario no encontrado"
+            )
+        
+        user_data = user_doc.to_dict()
+        
+        # Verificar campos obligatorios
+        required_fields = ['alias', 'birth_date', 'gender', 'city', 'profession', 'bio']
+        missing_fields = []
+        
+        for field in required_fields:
+            if not user_data.get(field):
+                missing_fields.append(field)
+        
+        # Verificar bio tenga al menos 120 palabras
+        if user_data.get('bio'):
+            bio_word_count = len(user_data['bio'].split())
+            if bio_word_count < 120:
+                missing_fields.append('bio_min_words')
+        
+        # Verificar mínimo 3 fotos
+        photos = user_data.get('photos', [])
+        if len(photos) < 3:
+            missing_fields.append('min_photos')
+        
+        # Si hay campos faltantes, rechazar acceso
+        if missing_fields:
+            field_names = {
+                'alias': 'Alias',
+                'birth_date': 'Fecha de nacimiento', 
+                'gender': 'Género',
+                'city': 'Ciudad',
+                'profession': 'Profesión',
+                'bio': 'Biografía',
+                'bio_min_words': 'Biografía (mínimo 120 palabras)',
+                'min_photos': 'Mínimo 3 fotos'
+            }
+            
+            missing_details = [field_names.get(field, field) for field in missing_fields]
+            
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Perfil incompleto. Campos requeridos: {', '.join(missing_details)}"
+            )
+        
+        return current_user
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error verificando perfil completado: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al verificar el perfil del usuario"
+        )
+
+
+def require_verified_and_complete(current_user: dict = Depends(verify_firebase_token)) -> dict:
+    """
+    Verifica tanto el email verificado como el perfil completado.
+    Combina ambas verificaciones en una sola dependencia.
+    """
+    # Primero verificar email
+    verified_user = require_verified_email(current_user)
+    
+    # Luego verificar perfil completado
+    return require_complete_profile(verified_user)
+
+
+def require_active_membership(current_user: dict = Depends(verify_firebase_token)) -> dict:
+    """
+    Verifica que el usuario tenga una membresía activa.
+    Rechaza el acceso si no tiene suscripción activa.
+    """
+    # En modo desarrollo, permitir acceso con token de prueba
+    if settings.ENVIRONMENT == "development" and current_user.get("uid") == "test_user_123":
+        return current_user
+    
+    try:
+        # Importar Firestore para verificar la membresía
+        from firebase_admin import firestore
+        db = firestore.client()
+        
+        # Obtener datos del usuario
+        user_ref = db.collection('users').document(current_user["uid"])
+        user_doc = user_ref.get()
+        
+        if not user_doc.exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado"
+            )
+        
+        user_data = user_doc.to_dict()
+        
+        # Verificar membresía activa
+        if not user_data.get('hasActiveSubscription', False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Se requiere una membresía activa para acceder a esta función. Por favor suscríbete para continuar."
+            )
+        
+        # Verificar estado de la suscripción
+        subscription_status = user_data.get('subscriptionStatus', 'inactive')
+        if subscription_status not in ['active', 'trialing']:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tu suscripción no está activa. Por favor renueva tu membresía para continuar."
+            )
+        
+        # Verificar fecha de expiración si existe
+        if user_data.get('subscriptionEndDate'):
+            from datetime import datetime
+            expiry_date = user_data['subscriptionEndDate']
+            if isinstance(expiry_date, datetime) and expiry_date < datetime.now():
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Tu suscripción ha expirado. Por favor renueva tu membresía para continuar."
+                )
+        
+        return current_user
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error verificando membresía: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al verificar el estado de la membresía"
+        )
+
+
+def require_complete_access(current_user: dict = Depends(verify_firebase_token)) -> dict:
+    """
+    Verifica todos los requisitos: email verificado, perfil completado y membresía activa.
+    Esta es la función más restrictiva para funciones premium.
+    """
+    # Primero verificar email y perfil
+    complete_user = require_verified_and_complete(current_user)
+    
+    # Luego verificar membresía
+    return require_active_membership(complete_user)
 
 # CORS middleware
 app.add_middleware(
@@ -124,7 +324,7 @@ async def health_check():
 # ========== Machine Learning Endpoints ==========
 
 @app.post("/api/v1/recommendations", response_model=RecommendationResponse)
-async def get_recommendations(request: RecommendationRequest):
+async def get_recommendations(request: RecommendationRequest, current_user: dict = Depends(require_verified_email)):
     """
     Get intelligent user recommendations using ML
 
@@ -202,7 +402,7 @@ async def verify_photo(request: PhotoVerificationRequest):
 # ========== Fraud Detection Endpoints ==========
 
 @app.post("/api/v1/fraud-check", response_model=FraudCheckResult)
-async def check_fraud(request: FraudCheckRequest, current_user: dict = Depends(verify_firebase_token)):
+async def check_fraud(request: FraudCheckRequest, current_user: dict = Depends(require_verified_and_complete)):
     """
     Check for fraudulent or suspicious behavior
 
@@ -245,7 +445,7 @@ async def check_fraud(request: FraudCheckRequest, current_user: dict = Depends(v
 # ========== NLP & Moderation Endpoints ==========
 
 @app.post("/api/v1/moderate-message", response_model=MessageModerationResult)
-async def moderate_message(request: MessageModerationRequest, current_user: dict = Depends(verify_firebase_token)):
+async def moderate_message(request: MessageModerationRequest, current_user: dict = Depends(require_verified_and_complete)):
     """
     Moderate message content using NLP
 
@@ -294,7 +494,7 @@ async def moderate_message(request: MessageModerationRequest, current_user: dict
 # ========== Geolocation Endpoints ==========
 
 @app.post("/api/v1/suggest-meeting-spots", response_model=list[MeetingSpot])
-async def suggest_meeting_spots(request: MeetingSpotRequest, current_user: dict = Depends(verify_firebase_token)):
+async def suggest_meeting_spots(request: MeetingSpotRequest, current_user: dict = Depends(require_verified_and_complete)):
     """
     Suggest safe meeting spots at midpoint between two users
 
@@ -345,7 +545,7 @@ async def suggest_meeting_spots(request: MeetingSpotRequest, current_user: dict 
 
 
 @app.post("/api/v1/verify-location", response_model=LocationVerificationResult)
-async def verify_location(request: LocationVerificationRequest, current_user: dict = Depends(verify_firebase_token)):
+async def verify_location(request: LocationVerificationRequest, current_user: dict = Depends(require_verified_and_complete)):
     """
     Verify user is at claimed location (for date validation)
     """
@@ -383,7 +583,7 @@ async def verify_location(request: LocationVerificationRequest, current_user: di
 # ========== Analytics Endpoints ==========
 
 @app.get("/api/v1/analytics/revenue-forecast", response_model=RevenueForecastResponse)
-async def forecast_revenue(months: int = 6, current_user: dict = Depends(verify_firebase_token)):
+async def forecast_revenue(months: int = 6, current_user: dict = Depends(require_verified_and_complete)):
     """
     Forecast revenue for upcoming months using Prophet
     """
@@ -407,7 +607,7 @@ async def forecast_revenue(months: int = 6, current_user: dict = Depends(verify_
 
 
 @app.get("/api/v1/analytics/churn-risk/{user_id}", response_model=ChurnRiskResponse)
-async def get_churn_risk(user_id: str, current_user: dict = Depends(verify_firebase_token)):
+async def get_churn_risk(user_id: str, current_user: dict = Depends(require_verified_and_complete)):
     """
     Calculate churn risk for a user
     """
@@ -437,7 +637,7 @@ async def get_churn_risk(user_id: str, current_user: dict = Depends(verify_fireb
 
 
 @app.get("/api/v1/analytics/user-ltv/{user_id}", response_model=UserLTVResponse)
-async def get_user_ltv(user_id: str, current_user: dict = Depends(verify_firebase_token)):
+async def get_user_ltv(user_id: str, current_user: dict = Depends(require_verified_and_complete)):
     """
     Calculate User Lifetime Value
     """
@@ -469,7 +669,7 @@ async def get_user_ltv(user_id: str, current_user: dict = Depends(verify_firebas
 # ========== Referral System Endpoints ==========
 
 @app.post("/api/v1/referrals/generate-code", response_model=SuccessResponse)
-async def generate_referral_code(user_id: str, custom_code: Optional[str] = None, current_user: dict = Depends(verify_firebase_token)):
+async def generate_referral_code(user_id: str, custom_code: Optional[str] = None, current_user: dict = Depends(require_verified_and_complete)):
     """
     Generate a referral code for a user
     """
@@ -491,7 +691,7 @@ async def generate_referral_code(user_id: str, custom_code: Optional[str] = None
 
 
 @app.post("/api/v1/referrals/process", response_model=SuccessResponse)
-async def process_referral(referred_user_id: str, referral_code: str, current_user: dict = Depends(verify_firebase_token)):
+async def process_referral(referred_user_id: str, referral_code: str, current_user: dict = Depends(require_verified_and_complete)):
     """
     Process a referral when a new user signs up with a code
     """
@@ -519,7 +719,7 @@ async def process_referral(referred_user_id: str, referral_code: str, current_us
 
 
 @app.post("/api/v1/referrals/complete", response_model=SuccessResponse)
-async def complete_referral(referral_id: str, current_user: dict = Depends(verify_firebase_token)):
+async def complete_referral(referral_id: str, current_user: dict = Depends(require_verified_and_complete)):
     """
     Complete a referral when the referred user meets requirements
     """
@@ -547,7 +747,7 @@ async def complete_referral(referral_id: str, current_user: dict = Depends(verif
 
 
 @app.get("/api/v1/referrals/stats/{user_id}", response_model=SuccessResponse)
-async def get_referral_stats(user_id: str, current_user: dict = Depends(verify_firebase_token)):
+async def get_referral_stats(user_id: str, current_user: dict = Depends(require_verified_and_complete)):
     """
     Get referral statistics for a user
     """
@@ -603,7 +803,7 @@ async def claim_reward(user_id: str, reward_id: str, current_user: dict = Depend
 
 
 @app.get("/api/v1/referrals/leaderboard")
-async def get_referral_leaderboard(limit: int = 10, current_user: dict = Depends(verify_firebase_token)):
+async def get_referral_leaderboard(limit: int = 10, current_user: dict = Depends(require_verified_and_complete)):
     """
     Get referral leaderboard
     """
@@ -627,7 +827,7 @@ async def get_referral_leaderboard(limit: int = 10, current_user: dict = Depends
 # ========== VIP Events Endpoints ==========
 
 @app.post("/api/v1/vip-events/create", response_model=SuccessResponse)
-async def create_vip_event(request: VIPEventCreateRequest, current_user: dict = Depends(verify_firebase_token)):
+async def create_vip_event(request: VIPEventCreateRequest, current_user: dict = Depends(require_complete_access)):
     """
     Create a new VIP event
     """
@@ -638,7 +838,7 @@ async def create_vip_event(request: VIPEventCreateRequest, current_user: dict = 
             event_type=request.event_type,
             location_data=request.location_data,
             date_time=request.date_time,
-            organizer_id=request.organizer_id,
+            organizer_id=current_user['uid'],
             customizations=request.customizations
         )
         
@@ -662,7 +862,7 @@ async def create_vip_event(request: VIPEventCreateRequest, current_user: dict = 
 
 
 @app.post("/api/v1/vip-events/suggest", response_model=SuccessResponse)
-async def suggest_vip_events(request: VIPEventSuggestionRequest, current_user: dict = Depends(verify_firebase_token)):
+async def suggest_vip_events(request: VIPEventSuggestionRequest, current_user: dict = Depends(require_verified_and_complete)):
     """
     Get personalized VIP event suggestions for a user
     """
@@ -688,7 +888,7 @@ async def suggest_vip_events(request: VIPEventSuggestionRequest, current_user: d
 
 
 @app.post("/api/v1/vip-events/purchase-ticket", response_model=SuccessResponse)
-async def purchase_vip_ticket(request: VIPEventTicketRequest, current_user: dict = Depends(verify_firebase_token)):
+async def purchase_vip_ticket(request: VIPEventTicketRequest, current_user: dict = Depends(require_verified_and_complete)):
     """
     Purchase a ticket for a VIP event
     """
@@ -722,7 +922,7 @@ async def purchase_vip_ticket(request: VIPEventTicketRequest, current_user: dict
 
 
 @app.get("/api/v1/vip-events/user/{user_id}", response_model=SuccessResponse)
-async def get_user_vip_events(user_id: str, current_user: dict = Depends(verify_firebase_token)):
+async def get_user_vip_events(user_id: str, current_user: dict = Depends(require_verified_and_complete)):
     """
     Get VIP events for a specific user
     """
@@ -777,7 +977,7 @@ async def create_curated_networking_event(request: CuratedNetworkingEventRequest
 
 
 @app.get("/api/v1/vip-events/statistics/{event_id}", response_model=SuccessResponse)
-async def get_vip_event_statistics(event_id: str, current_user: dict = Depends(verify_firebase_token)):
+async def get_vip_event_statistics(event_id: str, current_user: dict = Depends(require_verified_and_complete)):
     """
     Get statistics for a specific VIP event
     """
@@ -808,7 +1008,7 @@ async def get_vip_event_statistics(event_id: str, current_user: dict = Depends(v
 # ========== Video Chat Endpoints ==========
 
 @app.post("/api/v1/video-chat/create", response_model=SuccessResponse)
-async def create_video_call(request: VideoCallCreateRequest, current_user: dict = Depends(verify_firebase_token)):
+async def create_video_call(request: VideoCallCreateRequest, current_user: dict = Depends(require_complete_access)):
     """
     Create a new video call room
     """
@@ -842,7 +1042,7 @@ async def create_video_call(request: VideoCallCreateRequest, current_user: dict 
 
 
 @app.post("/api/v1/video-chat/invite", response_model=SuccessResponse)
-async def invite_to_video_call(request: VideoCallInvitationRequest, current_user: dict = Depends(verify_firebase_token)):
+async def invite_to_video_call(request: VideoCallInvitationRequest, current_user: dict = Depends(require_complete_access)):
     """
     Invite a user to join a video call
     """
@@ -876,7 +1076,7 @@ async def invite_to_video_call(request: VideoCallInvitationRequest, current_user
 
 
 @app.post("/api/v1/video-chat/accept-invitation", response_model=SuccessResponse)
-async def accept_video_call_invitation(request: VideoCallAcceptRequest, current_user: dict = Depends(verify_firebase_token)):
+async def accept_video_call_invitation(request: VideoCallAcceptRequest, current_user: dict = Depends(require_complete_access)):
     """
     Accept a video call invitation
     """
@@ -909,7 +1109,7 @@ async def accept_video_call_invitation(request: VideoCallAcceptRequest, current_
 
 
 @app.get("/api/v1/video-chat/call/{call_id}", response_model=VideoCallInfo)
-async def get_video_call_info(call_id: str, current_user: dict = Depends(verify_firebase_token)):
+async def get_video_call_info(call_id: str, current_user: dict = Depends(require_complete_access)):
     """
     Get detailed information about a video call
     """
@@ -938,7 +1138,7 @@ async def get_video_call_info(call_id: str, current_user: dict = Depends(verify_
 
 
 @app.get("/api/v1/video-chat/user/{user_id}", response_model=SuccessResponse)
-async def get_user_video_calls(user_id: str, current_user: dict = Depends(verify_firebase_token)):
+async def get_user_video_calls(user_id: str, current_user: dict = Depends(require_complete_access)):
     """
     Get active video calls for a user
     """
@@ -961,7 +1161,7 @@ async def get_user_video_calls(user_id: str, current_user: dict = Depends(verify
 
 
 @app.post("/api/v1/video-chat/end", response_model=SuccessResponse)
-async def end_video_call(request: VideoCallEndRequest, current_user: dict = Depends(verify_firebase_token)):
+async def end_video_call(request: VideoCallEndRequest, current_user: dict = Depends(require_complete_access)):
     """
     End a video call
     """
@@ -993,7 +1193,7 @@ async def end_video_call(request: VideoCallEndRequest, current_user: dict = Depe
 
 
 @app.post("/api/v1/video-chat/recording/start", response_model=SuccessResponse)
-async def start_video_call_recording(request: VideoCallRecordingRequest, current_user: dict = Depends(verify_firebase_token)):
+async def start_video_call_recording(request: VideoCallRecordingRequest, current_user: dict = Depends(require_complete_access)):
     """
     Start recording a video call
     """
@@ -1025,7 +1225,7 @@ async def start_video_call_recording(request: VideoCallRecordingRequest, current
 
 
 @app.post("/api/v1/video-chat/recording/stop", response_model=SuccessResponse)
-async def stop_video_call_recording(request: VideoCallRecordingRequest, current_user: dict = Depends(verify_firebase_token)):
+async def stop_video_call_recording(request: VideoCallRecordingRequest, current_user: dict = Depends(require_complete_access)):
     """
     Stop recording a video call
     """
@@ -1085,7 +1285,7 @@ async def moderate_video_call_content(request: VideoCallModerationRequest):
 
 
 @app.get("/api/v1/video-chat/statistics", response_model=VideoCallStatistics)
-async def get_video_chat_statistics(current_user: dict = Depends(verify_firebase_token)):
+async def get_video_chat_statistics(current_user: dict = Depends(require_complete_access)):
     """
     Get video chat system statistics
     """

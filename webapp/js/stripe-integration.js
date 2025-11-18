@@ -205,9 +205,9 @@ export function getSubscriptionPlans() {
   return [
     {
       id: 'monthly',
-      name: 'Membresía Mensual',
+      name: 'Membresía Premium Mensual',
       priceId: 'price_YOUR_MONTHLY_PRICE_ID', // TODO: Replace with actual Stripe price ID
-      amount: 29.99,
+      amount: 30.00,
       currency: 'EUR',
       interval: 'month',
       features: [
@@ -215,24 +215,12 @@ export function getSubscriptionPlans() {
         'Propuestas de citas',
         'Búsqueda avanzada',
         'Ver quién te dio like',
-        'Soporte prioritario'
+        'Video llamadas ilimitadas',
+        'Perfil destacado',
+        'Matchmaking personalizado',
+        'Soporte prioritario',
+        'Eventos VIP premium'
       ]
-    },
-    {
-      id: 'yearly',
-      name: 'Membresía Anual',
-      priceId: 'price_YOUR_YEARLY_PRICE_ID', // TODO: Replace with actual Stripe price ID
-      amount: 299.99,
-      currency: 'EUR',
-      interval: 'year',
-      features: [
-        'Todas las funciones mensuales',
-        'Descuento de 2 meses gratis',
-        'Badge "Miembro Premium"',
-        'Acceso VIP a eventos',
-        'Prioridad en soporte'
-      ],
-      savings: 60
     }
   ];
 }

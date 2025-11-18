@@ -248,33 +248,61 @@ class MatchingEngine:
         user_profile: UserProfile,
         filters: Optional[Dict] = None
     ) -> List[UserProfile]:
-        """Obtener candidatos de demo para testing"""
+        """Obtener candidatos de demo para testing - EXCLUSIVAMENTE HETEROSEXUAL"""
         try:
-            # Crear algunos candidatos de demo
-            demo_candidates = [
-                UserProfile(
-                    user_id='demo_user_1',
-                    age=26, gender='femenino', location={'lat': 40.7200, 'lng': -74.0100},
-                    interests=['music', 'travel'], profession='Designer',
-                    education_level='university', relationship_goals='serious',
-                    personality_traits={'open': 0.8}, preferences={},
-                    activity_score=0.7, reputation_score=0.8, verification_level='verified',
-                    photos_count=3, bio_length=150, languages=['es', 'en'],
-                    smoking='no', drinking='social', exercise='regular',
-                    religion='none', politics='centro'
-                ),
-                UserProfile(
-                    user_id='demo_user_2',
-                    age=30, gender='femenino', location={'lat': 40.7300, 'lng': -74.0200},
-                    interests=['sports', 'cooking'], profession='Teacher',
-                    education_level='university', relationship_goals='serious',
-                    personality_traits={'kind': 0.9}, preferences={},
-                    activity_score=0.6, reputation_score=0.7, verification_level='basic',
-                    photos_count=2, bio_length=120, languages=['es'],
-                    smoking='no', drinking='no', exercise='regular',
-                    religion='catholic', politics='left'
-                )
-            ]
+            # Crear candidatos de demo del género opuesto
+            if user_profile.gender == 'masculino':
+                # Hombre busca mujer
+                demo_candidates = [
+                    UserProfile(
+                        user_id='demo_woman_1',
+                        age=26, gender='femenino', location={'lat': 40.7200, 'lng': -74.0100},
+                        interests=['music', 'travel'], profession='Designer',
+                        education_level='university', relationship_goals='serious',
+                        personality_traits={'open': 0.8}, preferences={},
+                        activity_score=0.7, reputation_score=0.8, verification_level='verified',
+                        photos_count=3, bio_length=150, languages=['es', 'en'],
+                        smoking='no', drinking='social', exercise='regular',
+                        religion='none', politics='centro'
+                    ),
+                    UserProfile(
+                        user_id='demo_woman_2',
+                        age=30, gender='femenino', location={'lat': 40.7300, 'lng': -74.0200},
+                        interests=['sports', 'cooking'], profession='Teacher',
+                        education_level='university', relationship_goals='serious',
+                        personality_traits={'kind': 0.9}, preferences={},
+                        activity_score=0.6, reputation_score=0.7, verification_level='basic',
+                        photos_count=2, bio_length=120, languages=['es'],
+                        smoking='no', drinking='no', exercise='regular',
+                        religion='catholic', politics='left'
+                    )
+                ]
+            else:
+                # Mujer busca hombre
+                demo_candidates = [
+                    UserProfile(
+                        user_id='demo_man_1',
+                        age=28, gender='masculino', location={'lat': 40.7150, 'lng': -74.0150},
+                        interests=['technology', 'fitness'], profession='Engineer',
+                        education_level='university', relationship_goals='serious',
+                        personality_traits={'ambitious': 0.8}, preferences={},
+                        activity_score=0.8, reputation_score=0.9, verification_level='verified',
+                        photos_count=4, bio_length=180, languages=['es', 'en'],
+                        smoking='no', drinking='social', exercise='regular',
+                        religion='none', politics='centro'
+                    ),
+                    UserProfile(
+                        user_id='demo_man_2',
+                        age=32, gender='masculino', location={'lat': 40.7250, 'lng': -74.0250},
+                        interests=['music', 'sports'], profession='Doctor',
+                        education_level='university', relationship_goals='serious',
+                        personality_traits={'caring': 0.9}, preferences={},
+                        activity_score=0.7, reputation_score=0.8, verification_level='verified',
+                        photos_count=3, bio_length=160, languages=['es'],
+                        smoking='no', drinking='social', exercise='regular',
+                        religion='catholic', politics='right'
+                    )
+                ]
             
             # Aplicar filtros básicos
             filtered_candidates = []
@@ -293,7 +321,7 @@ class MatchingEngine:
                 
                 filtered_candidates.append(candidate)
             
-            logger.info(f"[MatchingEngine] Demo: Encontrados {len(filtered_candidates)} candidatos")
+            logger.info(f"[MatchingEngine] Demo: Encontrados {len(filtered_candidates)} candidatos HETEROSEXUALES")
             return filtered_candidates
             
         except Exception as e:

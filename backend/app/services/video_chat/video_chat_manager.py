@@ -52,7 +52,7 @@ class VideoCall:
     status: CallStatus = CallStatus.INITIATED
     started_at: datetime = field(default_factory=datetime.now)
     ended_at: Optional[datetime] = None
-    max_participants: int = 2
+    max_participants: int = 2  # EXCLUSIVAMENTE 1-A-1
     is_private: bool = True
     recording_status: RecordingStatus = RecordingStatus.NOT_RECORDING
     recording_url: Optional[str] = None
@@ -86,7 +86,7 @@ class WebRTCVideoChatManager:
         self.security_config = {
             'max_call_duration_minutes': 120,
             'invitation_timeout_seconds': 60,
-            'max_participants_per_call': 4,
+            'max_participants_per_call': 2,  # EXCLUSIVAMENTE 1-A-1
             'enable_recording': True,
             'require_mutual_consent': True,
             'enable_moderation': True,
